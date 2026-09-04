@@ -1,0 +1,1469 @@
+/* EasySSH App Shell —— 简洁克制现代风 */
+
+.easyssh-shell
+  display: flex
+  flex-direction: column
+  width: 100%
+  height: 100%
+  background: var(--bg-primary)
+  color: var(--text-primary)
+  font-size: var(--font-body)
+
+// ============ Topbar（品牌 + 服务器切换） ============
+.easyssh-topbar
+  height: 44px
+  flex-shrink: 0
+  display: flex
+  align-items: center
+  gap: 12px
+  padding: 0 16px
+  border-bottom: 1px solid var(--border)
+  background: var(--bg-secondary)
+
+.easyssh-brand
+  font-size: 14px
+  font-weight: 600
+  letter-spacing: 0.3px
+  color: var(--text-primary)
+  margin-right: 4px
+
+.easyssh-server-select
+  display: inline-flex
+  align-items: center
+  gap: 6px
+  padding: 5px 12px
+  border-radius: var(--radius)
+  border: 1px solid var(--border-strong)
+  background: var(--surface)
+  color: var(--text-primary)
+  font-size: 13px
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    border-color: var(--accent)
+    color: var(--accent)
+
+.easyssh-server-select-arrow
+  font-size: 10px
+  color: var(--text-secondary)
+
+.easyssh-topbar-state
+  font-size: 12px
+
+  &.connected
+    color: var(--success)
+
+  &.connecting
+    color: var(--warning)
+
+  &.disconnected
+    color: var(--text-tertiary)
+
+.easyssh-topbar-spacer
+  flex: 1
+
+.easyssh-topbar-icon
+  padding: 5px 8px
+  border-radius: var(--radius)
+  color: var(--text-secondary)
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    background: var(--surface-hover)
+    color: var(--text-primary)
+
+.easyssh-menu-server
+  display: flex
+  align-items: center
+  gap: 8px
+
+.easyssh-menu-dot
+  font-size: 11px
+
+  &.connected
+    color: var(--success)
+
+  &.connecting
+    color: var(--warning)
+
+  &.disconnected
+    color: var(--text-tertiary)
+
+.easyssh-menu-host
+  margin-left: auto
+  padding-left: 16px
+  color: var(--text-tertiary)
+  font-size: 12px
+
+// ============ Body（Explorer + Workspace） ============
+.easyssh-body
+  flex: 1
+  min-height: 0
+  display: flex
+
+.easyssh-workspace
+  flex: 1
+  min-width: 0
+  display: flex
+  flex-direction: column
+  background: var(--bg-primary)
+
+.easyssh-workspace-terminal
+  flex: 1
+  min-height: 0
+  position: relative
+  display: flex
+  flex-direction: column
+  background: var(--bg-primary)
+
+.easyssh-workspace-term-body
+  flex: 1
+  min-height: 0
+  position: relative
+  background: var(--bg-terminal)
+  overflow: hidden
+
+// EasySSH Terminal 主题统一（非纯黑，与整体深灰一致）
+.easyssh-shell
+  // xterm 尺寸链：覆盖 electerm Layout 基于 innerHeight/innerWidth 的公式
+  // （原公式 height - tabsHeight - termControlHeight 把 Session 撑到固定尺寸，
+  //   不感知 EasySSH splitter/容器变化——这是 term-wrap-2 残留 913px 的根因）
+  .layout-wrap
+  .layout-item
+  .sessions
+  .session-wrap
+    height: 100% !important
+    width: 100% !important
+
+  // Session 内部容器链（sizes 公式写死的 inline 尺寸全部改为跟随父容器）
+  .term-sftp-box
+    height: 100% !important
+    width: 100% !important
+
+    .ant-splitter
+      height: 100% !important
+      width: 100% !important
+
+    .terms-box
+    .term-wrap
+      height: 100% !important
+      width: 100% !important
+
+  // SessionControl 已隐藏，清除其占位 padding（36px）
+  .session-batch-active
+    padding-top: 0 !important
+
+  // xterm 背景跟随 EasySSH 深灰体系（比主背景略深一级）
+  .term-sftp-box
+    .terminal
+      background var(--bg-terminal) !important
+
+      .xterm
+        // 单一视觉 inset（top 8px 安全间距防第一行贴 tabs；左右 10px；bottom 10px）
+        // FitAddon 会自动扣除本 padding 计算行数——只此一层，不再叠 term-body padding
+        padding: 8px 10px 10px !important
+
+      .xterm-screen
+        &::before
+          display: none !important  // 去掉 electerm 水印
+
+      .xterm-viewport
+        background-color transparent !important
+
+  // 终端内容区文字与 padding
+  .terminal-normal-buffer
+    padding: 8px 4px
+
+// ============ EasySSH Terminal Chrome（多终端横条） ============
+.easyssh-term-chrome
+  flex-shrink: 0
+  display: flex
+  align-items: center
+  gap: 2px
+  padding: 0 10px
+  border-bottom: 1px solid var(--border)
+  background: var(--bg-secondary)
+  overflow: hidden
+
+.easyssh-term-tab
+  display: inline-flex
+  align-items: center
+  gap: 6px
+  padding: 0 12px
+  height: 26px
+  border-radius: 6px 6px 0 0
+  font-size: 12px
+  color: var(--text-secondary)
+  cursor: pointer
+  white-space: nowrap
+  transition: all 0.15s ease
+
+  &:hover
+    color: var(--text-primary)
+    background: var(--surface-hover)
+
+  &.active
+    background: var(--surface)
+    color: var(--text-primary)
+    border: 1px solid var(--border)
+    border-bottom-color: transparent
+
+.easyssh-term-tab-close
+  font-size: 10px
+  color: var(--text-tertiary)
+  padding: 2px
+  border-radius: 3px
+
+  &:hover
+    color: var(--danger)
+
+.easyssh-term-tab-add
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 26px
+  height: 26px
+  border-radius: 6px
+  font-size: 12px
+  color: var(--text-tertiary)
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    background: var(--surface-hover)
+    color: var(--text-primary)
+
+.easyssh-term-spacer
+  flex: 1
+
+.easyssh-term-action
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 26px
+  height: 26px
+  border-radius: 6px
+  font-size: 12px
+  color: var(--text-tertiary)
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    background: var(--surface-hover)
+    color: var(--text-primary)
+
+  &.active
+    color: var(--accent)
+
+.easyssh-splitter
+  height: 5px
+  flex-shrink: 0
+  cursor: row-resize
+  background: transparent
+  transition: background 0.15s ease
+
+  &:hover
+    background: var(--accent-soft)
+
+.easyssh-splitter::after
+  content: ''
+  display: block
+  height: 1px
+  margin: 2px 12px
+  background: var(--border)
+
+.easyssh-term-more
+  display: inline-flex
+  align-items: center
+  justify-content: center
+  width: 26px
+  height: 26px
+  border-radius: 6px
+  font-size: 13px
+  color: var(--text-tertiary)
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    background: var(--surface-hover)
+    color: var(--text-primary)
+
+// ============ Remote Explorer ============
+.easyssh-explorer
+  flex-shrink: 0
+  display: flex
+  flex-direction: column
+  background: var(--bg-secondary)
+  border-right: 1px solid var(--border)
+  overflow: hidden
+
+.easyssh-explorer-head
+  display: flex
+  align-items: center
+  justify-content: space-between
+  padding: 10px 12px 6px
+
+.easyssh-explorer-label
+  font-size: 11px
+  letter-spacing: 1px
+  color: var(--text-tertiary)
+  font-weight: 600
+
+.easyssh-explorer-actions
+  display: flex
+  gap: 4px
+
+.easyssh-explorer-action
+  font-size: 11px
+  color: var(--text-tertiary)
+  padding: 3px 6px
+  border-radius: 4px
+  cursor: pointer
+  display: inline-flex
+  align-items: center
+  gap: 4px
+  transition: all 0.15s ease
+
+  &:hover
+    background: var(--surface-hover)
+    color: var(--text-primary)
+
+  &.active
+    color: var(--accent)
+
+.easyssh-explorer-pathbar
+  display: flex
+  align-items: center
+  justify-content: space-between
+  padding: 4px 12px 8px
+  border-bottom: 1px solid var(--border)
+
+.easyssh-explorer-path
+  font-size: 12px
+  color: var(--text-secondary)
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
+  direction: rtl
+  text-align: left
+
+.easyssh-explorer-path-actions
+  display: flex
+  gap: 6px
+  flex-shrink: 0
+  margin-left: 6px
+
+  span
+    color: var(--text-tertiary)
+    cursor: pointer
+    font-size: 11px
+
+    &:hover
+      color: var(--accent)
+
+.easyssh-explorer-tree
+  flex: 1
+  overflow-y: auto
+  padding: 6px 6px 12px
+
+.easyssh-explorer-item
+  display: flex
+  align-items: center
+  gap: 6px
+  padding: 4px 8px
+  border-radius: 5px
+  cursor: pointer
+  white-space: nowrap
+  transition: background 0.12s ease
+
+  &:hover
+    background: var(--surface-hover)
+
+.easyssh-explorer-icon
+  font-size: 13px
+  color: var(--text-tertiary)
+  flex-shrink: 0
+
+  &.dir
+    color: #7aa2f7
+
+.easyssh-explorer-name
+  font-size: 12.5px
+  color: var(--text-primary)
+  overflow: hidden
+  text-overflow: ellipsis
+
+.easyssh-explorer-children
+  padding-left: 18px
+
+.easyssh-explorer-loading
+  padding: 4px 8px
+  font-size: 12px
+  color: var(--text-tertiary)
+
+.easyssh-explorer-empty
+  padding: 20px 12px
+  font-size: 12px
+  color: var(--text-tertiary)
+  text-align: center
+
+.easyssh-explorer-error
+  padding: 12px
+  font-size: 12px
+  color: var(--danger)
+
+.easyssh-explorer-error-detail
+  font-size: 11px
+  opacity: 0.7
+  margin-top: 4px
+  word-break: break-all
+
+.easyssh-explorer-retry
+  margin-top: 10px
+  padding: 4px 14px
+  border-radius: 5px
+  border: 1px solid var(--border-strong)
+  background: var(--surface)
+  color: var(--text-primary)
+  font-size: 12px
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    border-color: var(--accent)
+    color: var(--accent)
+
+.easyssh-explorer-collapsed
+  width: 34px
+  flex-shrink: 0
+  display: flex
+  align-items: center
+  justify-content: center
+  border-right: 1px solid var(--border)
+  background: var(--bg-secondary)
+  color: var(--text-tertiary)
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    color: var(--accent)
+
+.easyssh-explorer-resizer
+  width: 4px
+  flex-shrink: 0
+  cursor: col-resize
+  background: transparent
+  transition: background 0.15s ease
+
+  &:hover
+    background: var(--accent-soft)
+
+// ============ Remote Editor ============
+.easyssh-editor
+  display: flex
+  flex-direction: column
+  border-bottom: 1px solid var(--border)
+  background: var(--bg-primary)
+  overflow: hidden
+
+.easyssh-editor-tabs
+  display: flex
+  align-items: center
+  gap: 2px
+  padding: 0 8px
+  height: 34px
+  flex-shrink: 0
+  border-bottom: 1px solid var(--border)
+  background: var(--bg-secondary)
+
+.easyssh-editor-tab
+  display: inline-flex
+  align-items: center
+  gap: 6px
+  padding: 0 10px
+  height: 26px
+  border-radius: 6px 6px 0 0
+  font-size: 12px
+  color: var(--text-secondary)
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    color: var(--text-primary)
+
+  &.active
+    background: var(--surface)
+    color: var(--text-primary)
+    border: 1px solid var(--border)
+    border-bottom-color: transparent
+
+.easyssh-editor-tab-close
+  font-size: 10px
+  color: var(--text-tertiary)
+  padding: 2px
+  border-radius: 3px
+
+  &:hover
+    color: var(--danger)
+    background: var(--danger-soft)
+
+.easyssh-editor-tab-error
+  color: var(--danger)
+  font-weight: 700
+
+.easyssh-editor-spacer
+  flex: 1
+
+.easyssh-editor-save-btn
+  font-size: 12px
+  color: var(--accent)
+  padding: 4px 8px
+  border-radius: 4px
+  cursor: pointer
+  display: inline-flex
+  align-items: center
+  gap: 4px
+
+  &:hover
+    background: var(--accent-soft)
+
+.easyssh-editor-textarea
+  flex: 1
+  width: 100%
+  box-sizing: border-box
+  border: none
+  outline: none
+  resize: none
+  background: var(--bg-primary)
+  color: var(--text-primary)
+  font-family: Consolas, 'Courier New', monospace
+  font-size: 13px
+  line-height: 1.6
+  padding: 12px 16px
+
+.easyssh-codemirror
+  flex: 1
+  min-height: 0
+  overflow: hidden
+
+  .cm-editor
+    height: 100%
+
+  .cm-scroller
+    overflow: auto
+
+.easyssh-editor-loading
+  padding: 24px
+  color: var(--text-secondary)
+  font-size: 13px
+
+.easyssh-editor-error
+  padding: 24px
+  color: var(--danger)
+  font-size: 13px
+
+.easyssh-editor-error-detail
+  margin-top: 6px
+  font-size: 12px
+  opacity: 0.8
+  word-break: break-all
+
+.easyssh-editor-error-actions
+  margin-top: 14px
+  display: flex
+  gap: 10px
+
+.easyssh-editor-retry
+  padding: 5px 18px
+  border-radius: 6px
+  border: 1px solid var(--border-strong)
+  background: var(--surface)
+  color: var(--text-primary)
+  font-size: 12px
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    border-color: var(--accent)
+    color: var(--accent)
+
+.easyssh-editor-download
+  padding: 5px 18px
+  border-radius: 6px
+  border: 1px solid var(--border-strong)
+  background: transparent
+  color: var(--text-secondary)
+  font-size: 12px
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    border-color: var(--accent)
+    color: var(--accent)
+
+.easyssh-editor-empty
+  padding: 24px
+  color: var(--text-tertiary)
+  font-size: 13px
+
+// ============ Sidebar ============
+.easyssh-sidebar
+  width: var(--sidebar-width)
+  flex-shrink: 0
+  background: var(--bg-secondary)
+  border-right: 1px solid var(--border)
+  display: flex
+  flex-direction: column
+  padding: 16px 10px
+  box-sizing: border-box
+  overflow-y: auto
+
+.easyssh-brand
+  font-size: 15px
+  font-weight: 600
+  letter-spacing: 0.3px
+  padding: 4px 10px 18px
+  color: var(--text-primary)
+
+.easyssh-sidebar-label
+  font-size: var(--font-small)
+  color: var(--text-tertiary)
+  letter-spacing: 1px
+  padding: 0 10px 8px
+
+.easyssh-server-list
+  display: flex
+  flex-direction: column
+  gap: 2px
+
+.easyssh-server-item
+  display: flex
+  align-items: center
+  gap: 8px
+  padding: 7px 10px
+  border-radius: var(--radius)
+  cursor: pointer
+  transition: background 0.15s ease
+
+  &:hover
+    background: var(--surface-hover)
+
+  &.active
+    background: var(--surface-active)
+
+.easyssh-server-dot
+  font-size: 12px
+  flex-shrink: 0
+
+  &.connected
+    color: var(--success)
+
+  &.connecting
+    color: var(--warning)
+
+  &.disconnected
+    color: var(--text-tertiary)
+
+.easyssh-server-text
+  display: flex
+  flex-direction: column
+  min-width: 0
+
+.easyssh-server-name
+  font-size: 13px
+  color: var(--text-primary)
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
+
+.easyssh-server-sub
+  font-size: 11px
+  color: var(--text-tertiary)
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
+
+.easyssh-add-server
+  margin-top: 10px
+  padding: 7px 10px
+  border: 1px dashed var(--border-strong)
+  border-radius: var(--radius)
+  background: transparent
+  color: var(--text-secondary)
+  font-size: var(--font-body)
+  cursor: pointer
+  text-align: left
+  transition: all 0.15s ease
+
+  &:hover
+    border-color: var(--accent)
+    color: var(--accent)
+
+.easyssh-sidebar-footer
+  margin-top: auto
+  padding-top: 16px
+  border-top: 1px solid var(--border)
+  display: flex
+  flex-direction: column
+  gap: 2px
+
+.easyssh-footer-item
+  display: flex
+  align-items: center
+  gap: 8px
+  padding: 7px 10px
+  border-radius: var(--radius)
+  color: var(--text-secondary)
+  font-size: var(--font-body)
+  cursor: pointer
+  transition: background 0.15s ease
+
+  &:hover
+    background: var(--surface-hover)
+    color: var(--text-primary)
+
+.easyssh-footer-badge
+  margin-left: auto
+  background: var(--accent-soft)
+  color: var(--accent)
+  border-radius: 10px
+  padding: 0 7px
+  font-size: 11px
+  line-height: 18px
+
+// ============ Main ============
+.easyssh-main
+  flex: 1
+  min-width: 0
+  display: flex
+  flex-direction: column
+  background: var(--bg-primary)
+
+.easyssh-header
+  height: 52px
+  flex-shrink: 0
+  display: flex
+  align-items: center
+  justify-content: space-between
+  padding: 0 20px
+  border-bottom: 1px solid var(--border)
+  background: var(--bg-primary)
+
+.easyssh-header-left
+  min-width: 0
+
+.easyssh-header-title
+  font-size: 14px
+  font-weight: 600
+  color: var(--text-primary)
+  display: flex
+  align-items: center
+  gap: 10px
+
+.easyssh-header-state
+  font-size: 12px
+  font-weight: 400
+
+  &.connected
+    color: var(--success)
+
+  &.connecting
+    color: var(--warning)
+
+  &.error
+    color: var(--danger)
+
+  &.disconnected
+    color: var(--text-tertiary)
+
+.easyssh-header-sub
+  font-size: 12px
+  color: var(--text-secondary)
+  margin-top: 1px
+
+.easyssh-header-tools
+  display: flex
+  gap: 4px
+
+.easyssh-tool-btn
+  border: none
+  background: transparent
+  color: var(--text-secondary)
+  font-size: 13px
+  padding: 6px 14px
+  border-radius: var(--radius)
+  cursor: pointer
+  transition: all 0.15s ease
+
+  &:hover
+    background: var(--surface-hover)
+    color: var(--text-primary)
+
+  &.active
+    background: var(--accent-soft)
+    color: var(--accent)
+    font-weight: 500
+
+  &.easyssh-tool-btn-disabled
+    opacity: 0.4
+    cursor: not-allowed
+
+.easyssh-shell-content
+  flex: 1
+  min-height: 0
+  position: relative
+
+// ============ Welcome ============
+.easyssh-welcome
+  display: flex
+  flex-direction: column
+  align-items: center
+  justify-content: center
+  padding: 40px
+  box-sizing: border-box
+  position: relative
+  overflow: hidden
+
+  // kjsy 背景纹理：最弱视觉层（低于所有功能内容）
+  &::before
+    content: 'kjsy'
+    position: absolute
+    inset: 0
+    display: flex
+    align-items: center
+    justify-content: center
+    font-size: 200px
+    font-family: 'Cascadia Code', 'JetBrains Mono', Consolas, monospace
+    color: rgba(255, 255, 255, 0.05)
+    pointer-events: none
+    user-select: none
+
+  > *
+    position: relative
+    z-index: 1
+
+.easyssh-welcome-inner
+  display: flex
+  flex-direction: column
+  align-items: center
+  gap: 10px
+  width: 100%
+  max-width: 640px
+  padding: 40px 24px
+  box-sizing: border-box
+
+.easyssh-welcome-title
+  font-size: 24px
+  font-weight: 600
+  color: var(--text-primary)
+
+.easyssh-welcome-sub
+  font-size: 13px
+  color: var(--text-secondary)
+  margin-bottom: 20px
+
+.easyssh-welcome-cta
+  margin-bottom: 8px
+
+.easyssh-welcome-hint
+  margin-top: 18px
+  font-size: 12px
+  color: var(--text-tertiary)
+  display: flex
+  flex-direction: column
+  align-items: center
+  gap: 4px
+
+  span
+    color: var(--text-secondary)
+
+.easyssh-recent
+  width: 100%
+  max-width: 640px
+
+.easyssh-recent-header
+  display: flex
+  align-items: center
+  justify-content: space-between
+  margin-bottom: 8px
+
+.easyssh-recent-label
+  font-size: 11px
+  color: var(--text-tertiary)
+  letter-spacing: 1px
+  text-transform: uppercase
+
+.easyssh-recent-new
+  // 标题旁小按钮
+
+.easyssh-recent-item
+  display: flex
+  align-items: center
+  gap: 12px
+  padding: 12px 14px
+  border-radius: var(--radius)
+  cursor: pointer
+  background: rgba(255, 255, 255, 0.045)
+  color: var(--text-secondary)
+  transition: background 0.15s ease
+  margin-bottom: 6px
+
+  &:hover
+    background: rgba(255, 255, 255, 0.09)
+    color: var(--text-primary)
+
+.easyssh-recent-icon
+  font-size: 16px
+  color: var(--text-tertiary)
+  flex-shrink: 0
+
+.easyssh-recent-main
+  display: flex
+  flex-direction: column
+  min-width: 0
+  flex: 1
+
+.easyssh-recent-name
+  font-size: 13px
+  font-weight: 500
+  color: inherit
+  overflow: hidden
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.easyssh-recent-sub
+  font-size: 12px
+  color: var(--text-tertiary)
+  overflow: hidden
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.easyssh-recent-add
+  margin-top: 10px
+
+.easyssh-welcome-add
+  margin-top: 8px
+
+/* ===== Phase 3A: GPU Status Panel（低饱和深色信息卡） ===== */
+.easyssh-gpu-entry
+  font-size: 12px
+  gap: 4px
+
+.easyssh-gpu-panel
+  position: absolute
+  top: 38px
+  right: 12px
+  width: 360px
+  max-height: calc(100% - 60px)
+  overflow-y: auto
+  background: var(--surface)
+  border: 1px solid var(--border)
+  border-radius: 8px
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35)
+  padding: 12px
+  z-index: 120
+
+.easyssh-gpu-head
+  display: flex
+  align-items: center
+  justify-content: space-between
+  margin-bottom: 10px
+
+.easyssh-gpu-title
+  font-size: 13px
+  font-weight: 600
+  color: var(--text-primary)
+
+.easyssh-gpu-actions
+  display: flex
+  gap: 8px
+
+.easyssh-gpu-action
+  cursor: pointer
+  color: var(--text-tertiary)
+  font-size: 12px
+
+  &:hover
+    color: var(--text-primary)
+
+.easyssh-gpu-loading
+  padding: 20px 0
+  text-align: center
+  color: var(--text-tertiary)
+  font-size: 12px
+
+.easyssh-gpu-error
+  padding: 20px 0
+  text-align: center
+  color: var(--danger)
+  font-size: 12px
+
+.easyssh-gpu-card
+  border: 1px solid var(--border)
+  border-radius: 6px
+  padding: 10px
+  margin-bottom: 8px
+  background: var(--surface-2)
+
+.easyssh-gpu-card-title
+  font-size: 12px
+  font-weight: 600
+  color: var(--text-primary)
+  margin-bottom: 8px
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
+
+.easyssh-gpu-metric
+  margin-bottom: 6px
+
+  &:last-child
+    margin-bottom: 0
+
+.easyssh-gpu-metric-row
+  display: flex
+  justify-content: space-between
+  font-size: 11px
+  margin-bottom: 2px
+
+.easyssh-gpu-metric-label
+  color: var(--text-tertiary)
+
+.easyssh-gpu-metric-value
+  color: var(--text-primary)
+  font-variant-numeric: tabular-nums
+
+.easyssh-gpu-bar
+  height: 3px
+  border-radius: 2px
+  background: var(--surface-hover)
+  overflow: hidden
+
+.easyssh-gpu-bar-fill
+  height: 100%
+  border-radius: 2px
+  background: var(--primary)
+
+.easyssh-gpu-procs
+  margin-top: 10px
+  border-top: 1px solid var(--border)
+  padding-top: 10px
+
+.easyssh-gpu-procs-title
+  font-size: 12px
+  font-weight: 600
+  color: var(--text-primary)
+  margin-bottom: 6px
+
+.easyssh-gpu-procs-empty
+  font-size: 11px
+  color: var(--text-tertiary)
+  padding: 6px 0
+
+.easyssh-gpu-proc
+  display: flex
+  gap: 8px
+  align-items: center
+  font-size: 11px
+  padding: 3px 0
+  color: var(--text-secondary)
+
+.easyssh-gpu-proc-gpu
+  color: var(--text-tertiary)
+  min-width: 44px
+
+.easyssh-gpu-proc-pid
+  color: var(--text-tertiary)
+  min-width: 40px
+
+.easyssh-gpu-proc-name
+  flex: 1
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
+
+.easyssh-gpu-proc-mem
+  color: var(--text-tertiary)
+  font-variant-numeric: tabular-nums
+
+/* ===== Phase 3B: live monitor + idle + ownership ===== */
+.easyssh-gpu-interval
+  background: var(--surface-2)
+  border: 1px solid var(--border)
+  color: var(--text-secondary)
+  border-radius: 4px
+  font-size: 11px
+  padding: 1px 4px
+  outline: none
+
+.easyssh-gpu-action.spinning
+  animation: easyssh-spin 0.9s linear infinite
+  display: inline-flex
+
+@keyframes easyssh-spin
+  from
+    transform: rotate(0deg)
+  to
+    transform: rotate(360deg)
+
+.easyssh-gpu-summary
+  display: flex
+  justify-content: space-between
+  align-items: center
+  font-size: 11px
+  color: var(--text-secondary)
+  margin-bottom: 8px
+
+.easyssh-gpu-updated
+  color: var(--text-tertiary)
+
+.easyssh-gpu-error-inline
+  padding: 6px 0 10px
+  font-size: 11px
+
+.easyssh-gpu-card.idle
+  border-color: rgba(143, 191, 127, 0.25)
+
+.easyssh-gpu-dot
+  display: inline-block
+  width: 7px
+  height: 7px
+  border-radius: 50%
+  margin-right: 6px
+  vertical-align: 1px
+
+  &.idle
+    background: #8fbf7f
+
+  &.in-use
+    background: #d16969
+
+.easyssh-gpu-status
+  float: right
+  font-size: 11px
+  font-weight: 500
+
+  &.idle
+    color: #8fbf7f
+
+  &.in-use
+    color: #d16969
+
+.easyssh-gpu-proc-user
+  color: var(--text-tertiary)
+  min-width: 56px
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
+
+/* ===== Phase 3C: Log Monitor ===== */
+.easyssh-log-tab-dot
+  color: #8fbf7f
+  font-size: 10px
+  margin-right: 3px
+
+.easyssh-editor-log-layer
+  position: absolute
+  top: 30px
+  left: 0
+  right: 0
+  bottom: 0
+
+.easyssh-log-monitor
+  display: flex
+  flex-direction: column
+  height: 100%
+  background: var(--surface)
+
+.easyssh-log-head
+  display: flex
+  align-items: center
+  justify-content: space-between
+  padding: 4px 10px
+  border-bottom: 1px solid var(--border)
+  flex-shrink: 0
+
+.easyssh-log-title
+  font-size: 12px
+  color: var(--text-primary)
+  display: flex
+  align-items: center
+  gap: 8px
+  white-space: nowrap
+  overflow: hidden
+  text-overflow: ellipsis
+
+.easyssh-log-live
+  font-size: 11px
+  color: var(--text-tertiary)
+
+  &.on
+    color: #8fbf7f
+
+.easyssh-log-actions
+  display: flex
+  gap: 4px
+  flex-shrink: 0
+
+.easyssh-log-action
+  display: flex
+  align-items: center
+  gap: 4px
+  font-size: 11px
+  color: var(--text-secondary)
+  cursor: pointer
+  padding: 2px 6px
+  border-radius: 4px
+
+  &:hover
+    background: var(--surface-hover)
+    color: var(--text-primary)
+
+  &.active
+    color: var(--primary)
+
+.easyssh-log-body
+  flex: 1
+  overflow-y: auto
+  padding: 6px 10px
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace
+  font-size: 12px
+  line-height: 1.6
+  color: var(--text-secondary)
+
+.easyssh-log-line
+  white-space: pre-wrap
+  word-break: break-all
+
+.easyssh-log-empty
+  padding: 20px 0
+  text-align: center
+  color: var(--text-tertiary)
+  font-size: 12px
+
+.easyssh-log-error
+  padding: 6px 10px
+  color: var(--danger)
+  font-size: 11px
+  border-bottom: 1px solid var(--border)
+
+/* ===== Phase 3D: Remote Task Runner ===== */
+.easyssh-task-entry
+  display: inline-flex
+  align-items: center
+  gap: 4px
+  font-size: 12px
+
+.easyssh-task-panel
+  position: absolute
+  top: 38px
+  right: 12px
+  width: 420px
+  max-height: calc(100% - 60px)
+  overflow-y: auto
+  background: var(--surface)
+  border: 1px solid var(--border)
+  border-radius: 8px
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35)
+  padding: 12px
+  z-index: 121
+
+.easyssh-task-head
+  display: flex
+  align-items: center
+  justify-content: space-between
+  margin-bottom: 10px
+
+.easyssh-task-title
+  font-size: 13px
+  font-weight: 600
+  color: var(--text-primary)
+
+.easyssh-task-actions
+  display: flex
+  gap: 8px
+
+.easyssh-task-icon
+  cursor: pointer
+  color: var(--text-tertiary)
+  font-size: 12px
+
+  &:hover
+    color: var(--text-primary)
+
+  &.spinning
+    animation: easyssh-spin 0.9s linear infinite
+    display: inline-flex
+
+.easyssh-task-form
+  display: grid
+  grid-template-columns: 1fr auto
+  gap: 6px 8px
+  padding: 10px
+  border: 1px solid var(--border)
+  border-radius: 6px
+  background: var(--surface-2)
+
+  label
+    grid-column: 1 / -1
+    color: var(--text-tertiary)
+    font-size: 11px
+
+  input, textarea
+    grid-column: 1 / -1
+    box-sizing: border-box
+    width: 100%
+    padding: 6px 8px
+    border: 1px solid var(--border-strong)
+    border-radius: 4px
+    outline: none
+    background: var(--bg-primary)
+    color: var(--text-primary)
+    font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace
+    font-size: 12px
+
+    &:focus
+      border-color: var(--accent)
+
+  textarea
+    min-height: 64px
+    resize: vertical
+
+  button
+    border: 0
+    border-radius: 4px
+    padding: 5px 10px
+    background: var(--accent)
+    color: #fff
+    cursor: pointer
+    font-size: 12px
+
+    &:disabled
+      opacity: 0.45
+      cursor: not-allowed
+
+.easyssh-task-shortcut
+  align-self: center
+  color: var(--text-tertiary)
+  font-size: 10px
+
+.easyssh-task-error
+  padding: 8px 2px 0
+  color: var(--danger)
+  font-size: 11px
+
+.easyssh-task-list
+  margin-top: 10px
+
+.easyssh-task-empty
+  padding: 18px 0
+  text-align: center
+  color: var(--text-tertiary)
+  font-size: 12px
+
+.easyssh-task-card
+  padding: 9px 10px
+  margin-bottom: 7px
+  border: 1px solid var(--border)
+  border-radius: 6px
+  background: var(--surface-2)
+
+.easyssh-task-card-top
+  display: flex
+  align-items: center
+  gap: 6px
+
+.easyssh-task-dot
+  width: 7px
+  height: 7px
+  flex-shrink: 0
+  border-radius: 50%
+  background: var(--text-tertiary)
+
+  &.running
+    background: #8fbf7f
+
+  &.exited
+    background: #7d8590
+
+.easyssh-task-command
+  flex: 1
+  overflow: hidden
+  color: var(--text-primary)
+  font-family: "Cascadia Code", "JetBrains Mono", Consolas, monospace
+  font-size: 11px
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.easyssh-task-status
+  font-size: 11px
+  color: var(--text-tertiary)
+
+  &.running
+    color: #8fbf7f
+
+.easyssh-task-meta
+  margin: 5px 0
+  overflow: hidden
+  color: var(--text-tertiary)
+  font-size: 10px
+  text-overflow: ellipsis
+  white-space: nowrap
+
+.easyssh-task-card-actions
+  display: flex
+  gap: 5px
+
+  button
+    border: 1px solid var(--border-strong)
+    border-radius: 4px
+    padding: 2px 7px
+    background: transparent
+    color: var(--text-secondary)
+    cursor: pointer
+    font-size: 10px
+
+    &:hover
+      background: var(--surface-hover)
+      color: var(--text-primary)
+
+    &.danger
+      color: var(--danger)
+
+/* Explorer 文件行 ··· 菜单 */
+.easyssh-explorer-file-menu
+  margin-left: auto
+  color: var(--text-tertiary)
+  font-size: 12px
+  padding: 0 4px
+  border-radius: 3px
+  opacity: 0.6
+
+  &:hover
+    opacity: 1
+    color: var(--text-primary)
+    background: var(--surface-hover)
+
+.easyssh-explorer-menu
+  position: absolute
+  right: 6px
+  background: var(--surface-2)
+  border: 1px solid var(--border)
+  border-radius: 6px
+  padding: 4px
+  z-index: 130
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3)
+  min-width: 120px
+
+.easyssh-explorer-menu-item
+  padding: 5px 10px
+  font-size: 12px
+  color: var(--text-secondary)
+  border-radius: 4px
+  cursor: pointer
+
+  &:hover
+    background: var(--surface-hover)
+    color: var(--text-primary)
