@@ -17,11 +17,11 @@ const { parseQuickConnect } = require('../common/parse-quick-connect')
  * the handler for every clicked web link, hijacking the user's default browser.
  * They remain parseable via quick-connect (normalized to type "web").
  */
-const DEEP_LINK_PROTOCOLS = ['ssh', 'telnet', 'vnc', 'rdp', 'spice', 'serial', 'ftp', 'electerm']
+const DEEP_LINK_PROTOCOLS = ['ssh', 'telnet', 'vnc', 'rdp', 'spice', 'serial', 'ftp', 'easyssh']
 
 /**
- * Register electerm as a handler for supported protocols
- * Note: This makes electerm available as a handler but doesn't force it as default.
+ * Register EasySSH as a handler for supported protocols
+ * Note: This makes EasySSH available as a handler but doesn't force it as default.
  * Users can still choose their preferred app in system settings.
  *
  * @param {boolean} force - If true, register even if not packaged (for testing)

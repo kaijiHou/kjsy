@@ -16,8 +16,8 @@ async function main () {
   const { joinRemotePath } = await import('../../src/client/common/easyssh-path.mjs')
 
   await test('1. nested Explorer paths retain every parent directory', () => {
-  const camp = joinRemotePath('/public/home/test-user', 'CAMP')
-  assert.equal(joinRemotePath(camp, 'train_sues200.py'), '/public/home/test-user/CAMP/train_sues200.py')
+    const camp = joinRemotePath('/public/home/demo-user', 'CAMP')
+    assert.equal(joinRemotePath(camp, 'train_sues200.py'), '/public/home/demo-user/CAMP/train_sues200.py')
   })
 
   await test('2. root path does not gain duplicate slashes', () => {

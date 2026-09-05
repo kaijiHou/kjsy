@@ -192,7 +192,7 @@ export default auto(function Layout (props) {
     layout
   }
   const layoutNodes = store.easysshMode
-    // EasySSH 模式：不渲染 upstream 的 session tab bar，避免重复的第二层标签栏。
+    // EasySSH 模式：不渲染 upstream 的 session tab bar（Layouts/TabsWrap——"1 GPU-75..." 第二层
     // legacy chrome），只保留 SessionsWrap（session/xterm 内容）——Terminal Tab 由 EasySSH 自己提供
     ? [<SessionsWrap key='SessionsWrap' {...sessionsProps} />]
     : [

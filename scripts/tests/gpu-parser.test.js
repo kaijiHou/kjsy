@@ -30,7 +30,7 @@ function ok (name, fn) {
   }
 }
 
-// 1. 正常 4 GPU CSV（脱敏 GPU 示例）
+// 1. 正常 4 GPU CSV（真实 GPU-75 脱敏样例）
 ok('parseCsv: 正常 4 GPU', () => {
   const csv = [
     '0, GPU-0b3f0fad-5f13-3128-577c-4bae49f99ed6, NVIDIA GeForce RTX 3090, 0, 2, 24576, 23, 18.72, 350.00',

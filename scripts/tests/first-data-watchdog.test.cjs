@@ -61,8 +61,27 @@ async function main () {
     assert.strictEqual(count, 1)
   })
 
-  console.log(`${passed}/3 ALL PASS`)
-  if (passed !== 3) process.exitCode = 1
+  // Phase 4A-P0 §五十/§五十二：watchdog 首包后必须永久失效，
+  // 绝不能在长运行会话（train.py / top / vim 数小时无 prompt）中误杀终端。
+  await test('watchdog cannot fire again after first message (long-run invariant)', async () => {
+    const { setTimeout: realSetTimeout } = require('timers')
+    let subscribeCb = null
+    let fired = 0
+    armFirstDataWatchdog({
+      subscribe: cb => { subscribeCb = cb },
+      onTimeout: () => { fired++ },
+      timeoutMs: 30
+    })
+    await new Promise(r => realSetTimeout(r, 5))
+    // 首包到达（shell banner / 任意首条消息）
+    subscribeCb()
+    // 之后 2 倍超时窗口过去：不得触发
+    await new Promise(r => realSetTimeout(r, 80))
+    assert.strictEqual(fired, 0, 'watchdog must be permanently settled after first message')
+  })
+
+  console.log(`${passed}/4 ALL PASS`)
+  if (passed !== 4) process.exitCode = 1
 }
 
 main().catch(err => {

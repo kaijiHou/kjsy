@@ -384,6 +384,11 @@ class Sftp extends TerminalBase {
    */
   list (remotePath) {
     return new Promise((resolve, reject) => {
+      // EasySSH（Phase 4A-P0 §二十四）：拒绝非法路径，避免 ssh2 内部
+      // "missing directory handle or path" 之类实现错误泄漏到 UI
+      if (typeof remotePath !== 'string' || !remotePath) {
+        return reject(new Error('Invalid remote path'))
+      }
       const { sftp } = this
       const reg = /-/g
 

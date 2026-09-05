@@ -11,6 +11,58 @@ export default Store => {
     this.easysshActiveServerId = bm ? bm.id : null
   }
 
+  // ============ 多窗口（Phase 4A-P0） ============
+
+  /**
+   * 本窗口是否已持有任何连接型 tab（ssh/terminal/fileManager pane）
+   * 用于 Connection Launcher 判定：空 Welcome 窗口原地连接 vs 打开新窗口
+   */
+  Store.prototype.easysshWindowHasConnection = function () {
+    return this.tabs.some(t =>
+      t.srcId &&
+      (t.pane === paneMap.ssh || t.pane === paneMap.terminal || t.pane === paneMap.fileManager)
+    )
+  }
+
+  /**
+   * Connection Launcher（§五六）：
+   * - 当前窗口无连接 → 原地建立连接（复用空窗口）
+   * - 当前窗口已连接/连接中 → 打开/聚焦独立 BrowserWindow，绝不破坏当前窗口
+   * - 目标 profile 已在其它窗口打开 → 主进程直接 focus 那个窗口（§九）
+   */
+  Store.prototype.easysshLaunchProfile = function (bm) {
+    if (!bm) {
+      return 'invalid'
+    }
+    if (this.easysshWindowHasConnection()) {
+      if (typeof window !== 'undefined' && window.pre) {
+        window.pre.runGlobalAsync('easysshOpenProfileWindow', bm.id)
+          .catch(err => console.error('[EasySSH] open profile window failed', err))
+      }
+      return 'new-window'
+    }
+    this.easysshOpenServer(bm)
+    return 'in-place'
+  }
+
+  /**
+   * 启动自动连接：主进程创建窗口时绑定了 profileId → 本窗口数据就绪后原地连接
+   * （新窗口第一帧保持 Welcome/Loading 态，不泄漏其它窗口的路径/上下文，§二十七）
+   */
+  Store.prototype.easysshAutoOpenStartup = function () {
+    const pid = this.easysshStartupProfileId
+    if (!pid) {
+      return false
+    }
+    const bm = (this.bookmarks || []).find(b => b.id === pid)
+    if (!bm) {
+      console.warn('[EasySSH] startup profile not found:', pid)
+      return false
+    }
+    this.easysshOpenServer(bm)
+    return true
+  }
+
   // ============ Remote Editor（远程文件编辑，读写复用 electerm SFTP） ============
   Store.prototype.easysshOpenEditor = function (serverId, path, name) {
     // 去重排除 log 项（type='log' 同 serverId+path 但语义不同——Edit 必须开文件 tab）
@@ -89,9 +141,14 @@ export default Store => {
   /**
    * 打开/切换服务器 Workspace：
    * 已有该服务器的活动 tab → 激活；没有 → 走 electerm 连接流程
+   * 同时把本窗口绑定到该 profile（主进程 registry，供 Connection Launcher focus 判定）
    */
   Store.prototype.easysshOpenServer = function (bm) {
     this.easysshSetActiveServer(bm)
+    if (bm && typeof window !== 'undefined' && window.pre) {
+      window.pre.runGlobalAsync('easysshBindProfileWindow', bm.id)
+        .catch(err => console.error('[EasySSH] bind profile window failed', err))
+    }
     const tabs = this.tabs.filter(t =>
       t.srcId === bm.id &&
       (t.pane === paneMap.ssh || t.pane === paneMap.terminal || t.pane === paneMap.fileManager)

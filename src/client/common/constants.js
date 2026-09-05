@@ -199,9 +199,10 @@ export const commonLineEndings = commonTxLineEndings
 export const maxBatchInput = 30
 export const windowControlWidth = 94
 export const mobileBreakpoint = 600
+// EasySSH：升级检查指向本项目仓库（放入 version.html 即启用升级检查）；
+// 不再请求 electerm 官方地址，避免提示升级到 electerm 版本
 export const baseUpdateCheckUrls = [
-  packInfo.homepage,
-  'https://gitee.com/github-zxdong262/electerm/raw/gh-pages'
+  'https://raw.githubusercontent.com/kaijiHou/kjsy/main'
 ]
 export const syncTypes = buildConst([
   'github',

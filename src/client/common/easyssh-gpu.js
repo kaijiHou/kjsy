@@ -4,7 +4,7 @@
  * 通过现有 SSH session 的 exec channel 执行只读 nvidia-smi 查询——
  * 复用 transport、不新建连接、不污染交互 Terminal、不修改服务器。
  *
- * 查询字段已在常见 Linux GPU 主机上实测支持：
+ * 查询字段已在 GPU-75（CentOS 7 / OpenSSH 7.4 / 525.60.13 driver）实测支持：
  *   --query-gpu: index,name,utilization.gpu,memory.used,memory.total,
  *                temperature.gpu,power.draw,power.limit
  *   --query-compute-apps: pid,process_name,used_gpu_memory,gpu_uuid

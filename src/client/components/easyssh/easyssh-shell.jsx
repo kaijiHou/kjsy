@@ -160,20 +160,34 @@ export default auto(function EasySshShell (props) {
   const serverState = activeBm ? getServerState(store, activeBm).state : 'disconnected'
   const meta = STATE_META[serverState]
 
+  // §六十六：窗口标题带 profile（Alt+Tab 可分辨）；不含任何密码/secret（§六十七）
+  useEffect(() => {
+    const bmTitle = activeBm ? (activeBm.title || activeBm.host) : ''
+    const who = activeBm && activeBm.username ? ` - ${activeBm.username}@${activeBm.host}:${activeBm.port || 22}` : ''
+    document.title = activeBm ? `${PRODUCT_NAME} - ${bmTitle}${who}` : PRODUCT_NAME
+  }, [activeBm && activeBm.id, activeBm && activeBm.username])
+
   const menuItems = [
-    ...servers.map(b => ({
-      key: b.id,
-      label: (
-        <span className='easyssh-menu-server'>
-          <span className={'easyssh-menu-dot ' + STATE_META[getServerState(store, b).state].cls}>
-            {STATE_META[getServerState(store, b).state].dot}
+    ...servers.map(b => {
+      const isCurrent = activeBm && b.id === activeBm.id
+      return {
+        key: b.id,
+        label: (
+          <span className='easyssh-menu-server'>
+            <span className={'easyssh-menu-dot ' + STATE_META[getServerState(store, b).state].cls}>
+              {STATE_META[getServerState(store, b).state].dot}
+            </span>
+            {b.title || b.host}
+            <span className='easyssh-menu-host'>{b.host}</span>
+            <span className='easyssh-menu-hint'>
+              {isCurrent ? 'Current' : 'Open in new window'}
+            </span>
           </span>
-          {b.title || b.host}
-          <span className='easyssh-menu-host'>{b.host}</span>
-        </span>
-      )
-    })),
+        )
+      }
+    }),
     { type: 'divider' },
+    { key: '__create__', label: '+ Create Connection' },
     { key: '__manage__', label: 'Manage Servers…' }
   ]
 
@@ -182,9 +196,14 @@ export default auto(function EasySshShell (props) {
       store.openSetting()
       return
     }
+    if (key === '__create__') {
+      store.onNewSsh()
+      return
+    }
     const bm = servers.find(b => b.id === key)
     if (bm) {
-      store.easysshOpenServer(bm)
+      // Connection Launcher：空窗口原地连接，已连接窗口开新窗口（Phase 4A-P0）
+      store.easysshLaunchProfile(bm)
     }
   }
 

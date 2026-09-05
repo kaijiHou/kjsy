@@ -70,6 +70,7 @@ const { initCommandLine } = require('./command-line')
 const { watchFile, unwatchFile } = require('./watch-file')
 const lookup = require('../common/lookup')
 const { AIchat, AIchatWithTools, getStreamContent, stopStream } = require('./ai')
+const easysshWindows = require('./easyssh-windows')
 
 // Security: whitelist of safe environment variables for Linux/Mac/Windows
 const SAFE_ENV_KEYS = [
@@ -125,15 +126,33 @@ async function initAppServer () {
 }
 
 function initIpc () {
+  // 多窗口：createWindow 会被多次调用，IPC handler 只允许注册一次
+  if (globalState.get('ipcInited')) {
+    return
+  }
+  globalState.set('ipcInited', true)
   powerMonitor.on('resume', () => {
-    globalState.get('win').webContents.send('power-resume', null)
+    // 电源恢复是 app 级事件：广播给所有存活 workspace 窗口
+    for (const win of easysshWindows.getAllAliveWindows()) {
+      win.webContents.send('power-resume', null)
+    }
   })
-  async function init () {
+  // 从 IPC event 解析发起调用的窗口（多窗口 scope：§十五）
+  function winFromEvent (event) {
+    try {
+      const win = event && event.sender && BrowserWindow.fromWebContents(event.sender)
+      return win && !win.isDestroyed() ? win : globalState.get('win')
+    } catch (err) {
+      return globalState.get('win')
+    }
+  }
+  async function init (event) {
     const {
       langs,
       langMap
     } = await loadLocales()
     const config = globalState.get('config')
+    const win = winFromEvent(event)
     const globs = {
       config,
       langs,
@@ -141,10 +160,18 @@ function initIpc () {
       installSrc,
       appPath,
       exePath,
-      isPortable
+      isPortable,
+      // EasySSH 多窗口：本窗口创建时绑定的启动 profile（Welcome 窗口为 null）
+      easysshStartupProfileId: easysshWindows.getStartupProfileId(
+        win && win.webContents ? win.webContents.id : null
+      )
     }
     initApp(langMap, config)
-    initShortCut(globalShortcut, globalState.get('win'), config)
+    // 全局快捷键只注册一次（多窗口不再重复注册）
+    if (!globalState.get('shortcutsInited')) {
+      initShortCut(globalShortcut, win, config)
+      globalState.set('shortcutsInited', true)
+    }
     return globs
   }
 
@@ -176,31 +203,48 @@ function initIpc () {
     safeDecrypt: (str) => safeDecrypt(str),
     dbAction,
     getScreenSize,
-    closeApp: (closeAction = '') => {
-      globalState.set('closeAction', closeAction)
-      const win = globalState.get('win')
+    closeApp: (eventOrAction, closeAction = '') => {
+      // 多窗口：渲染端 runGlobalAsync 调用时首参是 event；内部调用时首参是 closeAction
+      const isEvent = eventOrAction && eventOrAction.sender
+      const win = isEvent ? winFromEvent(eventOrAction) : globalState.get('win')
+      globalState.set('closeAction', isEvent ? closeAction : eventOrAction)
       win && win.close()
     },
-    exit: () => {
-      const win = globalState.get('win')
+    exit: (event) => {
+      const win = winFromEvent(event)
       win && win.close()
     },
-    restart: (closeAction = '') => {
+    restart: (eventOrAction, closeAction = '') => {
+      const isEvent = eventOrAction && eventOrAction.sender
+      const win = isEvent ? winFromEvent(eventOrAction) : globalState.get('win')
       globalState.set('closeAction', '')
-      globalState.get('win').close()
+      win && win.close()
       app.relaunch()
     },
     setCloseAction: (closeAction = '') => {
       globalState.set('closeAction', closeAction)
     },
-    minimize: () => {
-      globalState.get('win').minimize()
+    minimize: (event) => {
+      const win = winFromEvent(event)
+      win && win.minimize()
     },
     listItermThemes,
     maximize,
     unmaximize,
-    openDevTools: () => {
-      globalState.get('win').webContents.openDevTools()
+    openDevTools: (event) => {
+      const win = winFromEvent(event)
+      win && win.webContents.openDevTools()
+    },
+    // EasySSH 多窗口（Phase 4A-P0）：
+    // 连接启动器 —— 已连接窗口选择其它 profile 时打开/聚焦独立 BrowserWindow
+    easysshOpenProfileWindow: async (profileId) => {
+      return easysshWindows.openProfileWindow(profileId)
+    },
+    // 窗口连接某个 profile 后回写绑定，后续选择同一 profile 时 focus 本窗口
+    easysshBindProfileWindow: (event, profileId) => {
+      const win = winFromEvent(event)
+      easysshWindows.bindProfile(win, profileId)
+      return true
     },
     setWindowSize: (update) => {
       lastStateManager.set('windowSize', update)
@@ -242,8 +286,21 @@ function initIpc () {
       )
     }
   }
+  // 窗口 scoped 的 asyncGlobal：dispatch 时把 IPC event 作为首参传入
+  const windowScopedGlobals = new Set([
+    'init',
+    'closeApp',
+    'exit',
+    'restart',
+    'minimize',
+    'openDevTools',
+    'easysshBindProfileWindow'
+  ])
   ipcMain.handle('async', (event, { name, args }) => {
-    return asyncGlobals[name](...args)
+    if (windowScopedGlobals.has(name)) {
+      return asyncGlobals[name](event, ...(args || []))
+    }
+    return asyncGlobals[name](...(args || []))
   })
   ipcMain.handle('show-open-dialog-sync', async (event, ...args) => {
     const win = BrowserWindow.fromWebContents(event.sender)

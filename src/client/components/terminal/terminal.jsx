@@ -1294,11 +1294,15 @@ class Term extends Component {
     this.handleInputEvent(d)
     // 连接中（attach 未激活/socket 未 OPEN）输入缓冲，激活后由 initAttachAddon 重放。
     // 原版此处直接丢弃，表现为连接期输入无回显、命令丢失（"终端像卡死"）。
+    // Phase 4A-P0：上限保护（连接期用户输入天然极小，防异常场景无界增长）。
     if (!this.attachAddon || !this.attachAddon._socket || this.attachAddon._socket.readyState !== 1) {
       if (!this._pendingEarlyInput) {
         this._pendingEarlyInput = []
       }
       this._pendingEarlyInput.push(d)
+      if (this._pendingEarlyInput.length > 200) {
+        this._pendingEarlyInput.splice(0, this._pendingEarlyInput.length - 200)
+      }
       return
     }
     // Skip normal suggestion logic when in password mode

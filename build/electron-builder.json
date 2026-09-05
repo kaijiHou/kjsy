@@ -1,5 +1,5 @@
 {
-  "appId": "org.electerm.electerm",
+  "appId": "org.kjsy.easyssh",
   "directories": {
     "app": "work/app",
     "output": "dist",
@@ -21,6 +21,8 @@
     "signAndEditExecutable": false,
     "publish": {
       "provider": "github",
+      "owner": "kaijiHou",
+      "repo": "kjsy",
       "channel": "${env.WORKFLOW_NAME}"
     }
   },
@@ -62,18 +64,12 @@
       ]
     },
     {
-      "name": "Electerm Protocol",
+      "name": "EasySSH Protocol",
       "schemes": [
-        "electerm"
+        "easyssh"
       ]
     }
   ],
-  "appx": {
-    "applicationId": "electerm",
-    "identityName": "64159ZHAOXudong.electerm",
-    "publisher": "CN=9F481654-170A-434C-8259-984D2EB1FD7F",
-    "publisherDisplayName": "ZHAO Xudong"
-  },
   "nsis": {
     "oneClick": false,
     "artifactName": "${productName}-${version}-${os}-${arch}-installer.${ext}",
@@ -82,9 +78,11 @@
   "mac": {
     "category": "public.app-category.developer-tools",
     "target": "dmg",
-    "icon": "node_modules/@electerm/electerm-resource/build/icons.icns",
+    "icon": "build/icons/easyssh-512x512.png",
     "publish": {
       "provider": "github",
+      "owner": "kaijiHou",
+      "repo": "kjsy",
       "channel": "${env.WORKFLOW_NAME}"
     },
     "hardenedRuntime": true,
@@ -109,7 +107,7 @@
   },
   "linux": {
     "category": "Development;System;TerminalEmulator",
-    "icon": "node_modules/@electerm/electerm-resource/build-res/linux",
+    "icon": "build/icons/linux",
     "target": [
       "rpm",
       "deb",
@@ -119,11 +117,13 @@
     ],
     "publish": {
       "provider": "github",
+      "owner": "kaijiHou",
+      "repo": "kjsy",
       "channel": "${env.WORKFLOW_NAME}"
     },
     "desktop": {
       "entry": {
-        "StartupWMClass": "electerm"
+        "StartupWMClass": "EasySSH"
       }
     }
   },
@@ -131,6 +131,8 @@
     "confinement": "classic",
     "publish": {
       "provider": "github",
+      "owner": "kaijiHou",
+      "repo": "kjsy",
       "channel": "${env.WORKFLOW_NAME}"
     }
   },

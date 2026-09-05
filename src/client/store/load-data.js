@@ -217,6 +217,8 @@ export default (Store) => {
     store.isPortable = globs.isPortable
     store._config = globs.config
     window.et.langs = globs.langs
+    // EasySSH 多窗口：本窗口启动时要自动连接的 profile（由主进程 window registry 提供）
+    store.easysshStartupProfileId = globs.easysshStartupProfileId || null
     store.zoom(store.config.zoom, false, true)
     await initWsCommon()
   }
@@ -252,6 +254,8 @@ export default (Store) => {
       store.loadFontList()
       store.fetchItermThemes()
       store.openInitSessions()
+      // EasySSH 多窗口：新窗口携带启动 profile → 原地自动连接（§六 空窗口复用）
+      store.easysshAutoOpenStartup()
       store.fetchSshConfigItems()
       store.initCommandLine().catch(store.onError)
       initWatch(store)

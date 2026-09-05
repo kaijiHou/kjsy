@@ -19,8 +19,11 @@ const _ = require('./lodash.js')
 const getPort = require('./get-port')
 const globalState = require('./glob-state')
 const webviewHandler = require('./webview-handler')
+const easysshWindows = require('./easyssh-windows')
 
 exports.createWindow = async function (userConfig) {
+  // EasySSH 多窗口：一个 BrowserWindow 绑定一个 Connection Profile（可空 = Welcome 窗口）
+  const easysshProfileId = userConfig.easysshProfileId || null
   globalState.set('closeAction', 'closeApp')
   globalState.set('requireAuth', !!userConfig.hashedPassword)
   const { width, height, x, y } = await getWindowSize()
@@ -64,6 +67,7 @@ exports.createWindow = async function (userConfig) {
   webviewHandler.init(win)
 
   globalState.set('win', win)
+  easysshWindows.registerWindow(win, easysshProfileId)
 
   await initAppServer()
   initIpc()
@@ -111,6 +115,8 @@ exports.createWindow = async function (userConfig) {
     }, 100))
 
     win.on('focus', () => {
+      // 多窗口：菜单/全局 IPC 事件目标是最近聚焦的窗口
+      globalState.set('win', win)
       win.webContents.send('focused', null)
     })
     win.on('blur', () => {
@@ -118,5 +124,8 @@ exports.createWindow = async function (userConfig) {
     })
     disableShortCuts(win)
   })
-  win.on('close', onClose)
+  win.on('close', (e) => onClose(e, win))
+  win.on('closed', () => {
+    easysshWindows.unregisterWindow(win)
+  })
 }

@@ -68,6 +68,10 @@ export default class AttachAddonCustom {
       }
       if (state === 0) {
         this._pendingInput.push(data)
+        // Phase 4A-P0：上限保护，防止异常场景下连接期缓冲无界增长
+        if (this._pendingInput.length > 200) {
+          this._pendingInput.splice(0, this._pendingInput.length - 200)
+        }
         if (!this._replayBound) {
           this._replayBound = true
           this._socket.addEventListener('open', () => {

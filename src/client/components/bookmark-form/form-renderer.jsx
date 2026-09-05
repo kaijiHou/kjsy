@@ -168,6 +168,15 @@ export default function FormRenderer ({ config, props }) {
       submit(evt, obj)
     }
     if (evt !== 'save' && evt !== 'saveAndCreateNew') {
+      // EasySSH 多窗口（Phase 4A-P0 §七）：已连接窗口"保存并连接/连接"新
+      // profile 时走 Connection Launcher —— 空窗口原地连接，已连接窗口打开
+      // 独立 BrowserWindow，绝不把第二个服务器的 tab 塞进当前窗口。
+      if (window.store.easysshMode) {
+        const saved = window.store.bookmarks.find(b => b.id === obj.id) || obj
+        props.hide()
+        window.store.easysshLaunchProfile(saved)
+        return
+      }
       window.store.currentLayoutBatch = window.openTabBatch || 0
       props.store.addTab({
         ...copy(obj),

@@ -5,6 +5,7 @@ import {
   SaveOutlined
 } from '@ant-design/icons'
 import { ensureSftp, getTerminalPort } from '../../common/easyssh-sftp'
+import { getOwnerTab, getOwnerBookmark } from '../../common/easyssh-utils'
 import CodeMirrorEditor from './codemirror-editor'
 import LogMonitorView from './log-monitor'
 import './easyssh.styl'
@@ -12,25 +13,37 @@ import './easyssh.styl'
 /**
  * Remote Editor —— 远程文件编辑
  * 读写完全复用 electerm SFTP（ensureSftp），Ctrl+S 写回服务器
+ * Phase 4A-P0 §三十一：每个 editor/log 绑定自己的 serverId，读写一律解析
+ * owner tab 的 Connection Runtime，绝不复用"当前活动 tab"的连接。
  */
 export default auto(function EditorPanel (props) {
   const { store, bm, tab, height } = props
-  // Log Monitor 需要 terminal 的 ws 端口（exec-stream 通道）
-  const termPort = tab ? getTerminalPort(tab.id) : null
   const editors = store.editors
   const active = editors.find(e => e.id === store.easysshActiveEditorId) || null
   const sftpRef = useRef(null)
   const [retryCount, setRetryCount] = useState(0)
 
-  // 与 Explorer 共享 SFTP 连接
+  // 当前活动 tab 的连接（与 Explorer 共享 SFTP 连接的预热）
   useEffect(() => {
-    if (!bm) {
+    if (!bm || !tab) {
       return
     }
-    ensureSftp(store, { ...tab, ...bm, id: tab.id }).then(s => {
+    ensureSftp(store, { ...tab, id: tab.id }).then(s => {
       sftpRef.current = s
     })
-  }, [bm?.id])
+  }, [bm?.id, tab?.id])
+
+  // 解析某个 editor/log 自身的连接 owner；返回 { tab, bm } 或 null
+  const resolveOwner = (serverId) => {
+    const ownerTab = getOwnerTab(store, serverId)
+    if (!ownerTab) {
+      return null
+    }
+    return {
+      tab: ownerTab,
+      bm: getOwnerBookmark(store, serverId) || bm
+    }
+  }
 
   // 新文件打开 → 读取远程内容（含耗时 profiling 与超时保护）
   useEffect(() => {
@@ -38,10 +51,15 @@ export default auto(function EditorPanel (props) {
     if (!ed || !ed.loading || ed.text || ed.error) {
       return
     }
+    const owner = resolveOwner(ed.serverId)
+    if (!owner || !owner.tab) {
+      store.easysshSetEditorError(ed.id, 'Connection for this file is closed — reopen it from Explorer')
+      return
+    }
     const t0 = Date.now()
     const t1 = t0
     console.log(`[EasySSH FileOpen] click -> read start (${Date.now() - t0}ms) path=${ed.path}`)
-    ensureSftp(store, { ...tab, ...bm, id: tab.id }).then(async sftp => {
+    ensureSftp(store, { ...owner.tab, id: owner.tab.id }).then(async sftp => {
       const t4 = Date.now()
       console.log(`[EasySSH FileOpen] SFTP ready (${t4 - t0}ms)`)
       if (!sftp) {
@@ -103,7 +121,13 @@ export default auto(function EditorPanel (props) {
   }
 
   const save = async (ed) => {
-    const sftp = sftpRef.current || await ensureSftp(store, { ...tab, ...bm, id: tab.id })
+    // §三十一：保存必须走 editor 自己 serverId 的连接，且 owner 必须仍然存活
+    const owner = resolveOwner(ed.serverId)
+    if (!owner || !owner.tab) {
+      store.easysshSetEditorError(ed.id, 'Connection closed — cannot save. Reopen this file from Explorer.')
+      return
+    }
+    const sftp = sftpRef.current || await ensureSftp(store, { ...owner.tab, id: owner.tab.id })
     if (!sftp) {
       store.easysshSetEditorError(ed.id, 'SFTP not ready')
       return
@@ -184,15 +208,25 @@ export default auto(function EditorPanel (props) {
           <SaveOutlined /> Save
         </span>
       </div>
-      {editors.filter(ed => ed.type === 'log').map(lg => (
-        <div
-          key={lg.id}
-          className='easyssh-editor-log-layer'
-          style={{ display: lg.id === store.easysshActiveEditorId ? 'block' : 'none' }}
-        >
-          <LogMonitorView log={lg} serverId={lg.serverId} port={termPort} pid={tab ? tab.id : null} />
-        </div>
-      ))}
+      {editors.filter(ed => ed.type === 'log').map(lg => {
+        // §三十三：日志流绑定 log 自己的 serverId 对应的 Connection Runtime
+        const owner = resolveOwner(lg.serverId)
+        const ownerPort = owner && owner.tab ? getTerminalPort(owner.tab.id) : null
+        return (
+          <div
+            key={lg.id}
+            className='easyssh-editor-log-layer'
+            style={{ display: lg.id === store.easysshActiveEditorId ? 'block' : 'none' }}
+          >
+            <LogMonitorView
+              log={lg}
+              serverId={lg.serverId}
+              port={ownerPort}
+              pid={owner && owner.tab ? owner.tab.id : null}
+            />
+          </div>
+        )
+      })}
       {active && active.type !== 'log'
         ? (
             active.loading

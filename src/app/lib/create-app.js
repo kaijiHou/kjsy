@@ -72,6 +72,12 @@ process.on('uncaughtException', (error) => {
 
 exports.createApp = async function () {
   app.setName(packInfo.name)
+  // EasySSH dev/test override：允许开发/验收实例使用独立 userData（Chromium profile +
+  // safeStorage os_crypt key），不触碰正式安装版 profile，同时仍共享硬编码的
+  // appData/electerm 数据库路径。设置 EASYSSH_USER_DATA_DIR 即生效。
+  if (process.env.EASYSSH_USER_DATA_DIR) {
+    app.setPath('userData', process.env.EASYSSH_USER_DATA_DIR)
+  }
   // Set desktop name so Linux taskbars (e.g. UOS/Deepin dde-dock) can match
   // the window to the .desktop file embedded in the AppImage.
   if (process.platform === 'linux' && app.setDesktopName) {

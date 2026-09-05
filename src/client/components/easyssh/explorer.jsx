@@ -10,6 +10,7 @@ import {
 } from '@ant-design/icons'
 import { ensureSftp } from '../../common/easyssh-sftp'
 import { joinRemotePath } from '../../common/easyssh-path.mjs'
+import { getServerState } from '../../common/easyssh-utils'
 import './easyssh.styl'
 
 /**
@@ -70,14 +71,18 @@ export default auto(function RemoteExplorer (props) {
       }
       try {
         // 注意：bm 展开会覆盖 id（bookmark id ≠ tab id），必须显式保留 tab.id
-        const sftp = await ensureSftp(store, { ...tab, ...pickAuth(bm), id: tab.id })
+        const sftp = await ensureSftp(store, { ...tab, id: tab.id })
         if (disposed || !sftp) {
           return
         }
         sftpRef.current = sftp
         setSftpReady(true)
-        // 初始路径：显式书签目录优先，其次终端 cwd，最后用 SFTP home 兜底。
-        const initial = (defaultCwd && defaultCwd !== '~') || store.cwdMap[tab.id] || await sftp.getHomeDir().catch(() => '')
+        // 初始路径（§二十二/§二十三）：显式书签目录 > 终端 cwd > SFTP realpath('.')
+        // > home 兜底。连接建立后 Explorer 永远有一个可靠初始目录，不会 undefined。
+        const initial = (defaultCwd && defaultCwd !== '~') ||
+          store.cwdMap[tab.id] ||
+          await sftp.realpath('.').catch(() => '') ||
+          await sftp.getHomeDir().catch(() => '')
         if (initial) {
           setRootPath(initial)
         }
@@ -96,11 +101,10 @@ export default auto(function RemoteExplorer (props) {
     setError('')
     setSftpReady(false)
     setRetryCount(c => c + 1)
-  }
-
-  // rootPath 变化（或 SFTP 就绪）→ 列目录
+  } // 列目录（rootPath 变化或 SFTP 就绪）
+  // 路径为空/未就绪时不发请求 —— 服务端永远不会收到 undefined/null 路径
   useEffect(() => {
-    if (!rootPath || !sftpReady || !sftpRef.current) {
+    if (!rootPath || typeof rootPath !== 'string' || !sftpReady || !sftpRef.current) {
       return
     }
     let disposed = false
@@ -126,11 +130,6 @@ export default auto(function RemoteExplorer (props) {
       disposed = true
     }
   }, [rootPath, sftpReady])
-
-  const pickAuth = (bm) => {
-    // tab 对象已含认证字段，此处仅保证关键字段存在
-    return bm
-  }
 
   const goPath = (p) => {
     setFollow(false)
@@ -195,7 +194,7 @@ export default auto(function RemoteExplorer (props) {
       // SFTP 连接可能已断开/未建立：null 时重建（共享连接管理器，不等待 15s）
       let sftp = sftpRef.current
       if (!sftp) {
-        sftp = await ensureSftp(store, { ...tab, ...pickAuth(bm), id: tab.id })
+        sftp = await ensureSftp(store, { ...tab, id: tab.id })
         sftpRef.current = sftp
         setSftpReady(true)
       }
@@ -206,7 +205,7 @@ export default auto(function RemoteExplorer (props) {
     } catch (e) {
       // 缓存连接已断：force 重建一次再试
       try {
-        const sftp = await ensureSftp(store, { ...tab, ...pickAuth(bm), id: tab.id }, true)
+        const sftp = await ensureSftp(store, { ...tab, id: tab.id }, true)
         sftpRef.current = sftp
         setSftpReady(true)
         const list = await sftp.list(rootPath)
@@ -308,6 +307,13 @@ export default auto(function RemoteExplorer (props) {
     )
   }
 
+  // 连接状态（§二十四/§二十九）：
+  // - 连接建立中 → Waiting，绝不能把内部初始化错误当正常状态展示
+  // - 连接失败/断开 → Disconnected，不显示旧目录也不允许操作
+  // - 真实的 list/init 失败才显示错误 + Retry
+  const connState = bm ? getServerState(store, bm).state : 'disconnected'
+  const waitingForConnection = connState === 'connecting' || (connState === 'disconnected' && tab && tab.status === 'processing')
+
   return (
     <div className='easyssh-explorer' style={{ width: width + 'px', height: height + 'px' }}>
       <div className='easyssh-explorer-head'>
@@ -332,27 +338,41 @@ export default auto(function RemoteExplorer (props) {
         ? (
           <div className='easyssh-explorer-empty'>Connect a server to browse files</div>
           )
-        : error
+        : connState === 'error'
           ? (
             <div className='easyssh-explorer-error'>
-              <div>Unable to load remote files</div>
-              <div className='easyssh-explorer-error-detail'>{error}</div>
+              <div>Disconnected</div>
+              <div className='easyssh-explorer-error-detail'>Reconnect the server to browse files</div>
               <button className='easyssh-explorer-retry' onClick={retryInit}>Retry</button>
             </div>
             )
-          : loading && !items.length
+          : error
             ? (
-              <div className='easyssh-explorer-loading'>Loading…</div>
+              <div className='easyssh-explorer-error'>
+                <div>Unable to load remote files</div>
+                <div className='easyssh-explorer-error-detail'>{error}</div>
+                <button className='easyssh-explorer-retry' onClick={retryInit}>Retry</button>
+              </div>
               )
-            : items.length === 0
+            : waitingForConnection || !sftpReady || !rootPath
               ? (
-                <div className='easyssh-explorer-empty'>(empty)</div>
-                )
-              : (
-                <div className='easyssh-explorer-tree'>
-                  {items.filter(isVisible).map(item => renderItem(item))}
+                <div className='easyssh-explorer-loading'>
+                  {waitingForConnection ? 'Waiting for connection…' : 'Loading remote files…'}
                 </div>
-                )}
+                )
+              : loading && !items.length
+                ? (
+                  <div className='easyssh-explorer-loading'>Loading…</div>
+                  )
+                : items.length === 0
+                  ? (
+                    <div className='easyssh-explorer-empty'>(empty)</div>
+                    )
+                  : (
+                    <div className='easyssh-explorer-tree'>
+                      {items.filter(isVisible).map(item => renderItem(item))}
+                    </div>
+                    )}
     </div>
   )
 })

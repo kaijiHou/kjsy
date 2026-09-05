@@ -28,9 +28,6 @@ function generateErrorHtml (port) {
         .chinese {
           font-family: 'Noto Sans SC', sans-serif;
         }
-        img {
-          max-width: 200px;
-        }
       </style>
     </head>
     <body>
@@ -43,7 +40,7 @@ function generateErrorHtml (port) {
           <li>Verify that VPNs or other network tools are not redirecting localhost traffic.</li>
           <li>Check firewall rules or antivirus software that might block local ports.</li>
         </ul>
-        <p>Restart the app after making changes. If the problem persists, contact author: zxdong@gmail.com.</p>
+        <p>Restart the app after making changes. If the problem persists, please open an issue at https://github.com/kaijiHou/kjsy/issues.</p>
       </div>
 
       <div class="section chinese">
@@ -55,12 +52,7 @@ function generateErrorHtml (port) {
           <li>确认 VPN 或其他网络工具未重定向本地流量。</li>
           <li>检查防火墙规则或防病毒软件是否阻止了本地端口。</li>
         </ul>
-        <p>更改设置后重启应用程序。如果问题仍然存在，请联系作者：zxdong@gmail.com。</p>
-        <p>
-          <img
-            src='https://electerm.org/electerm-wechat-group-qr.jpg'
-          />
-        </p>
+        <p>更改设置后重启应用程序。如果问题仍然存在，请到 https://github.com/kaijiHou/kjsy/issues 提交反馈。</p>
       </div>
     </body>
     </html>

@@ -2,6 +2,8 @@
  * database default should init
  */
 
+const { DEFAULT_EASYSSH_BOOKMARK } = require('./default-easyssh-bookmark')
+
 function parsor (themeTxt) {
   return themeTxt.split('\n').reduce((prev, line) => {
     let [key = '', value = ''] = line.split('=')
@@ -115,13 +117,13 @@ module.exports = exports.default = [
       {
         _id: 'default',
         title: 'default',
-        bookmarkIds: [],
+        bookmarkIds: [DEFAULT_EASYSSH_BOOKMARK._id],
         bookmarkGroupIds: []
       }
     ]
   },
   {
     db: 'bookmarks',
-    data: []
+    data: [DEFAULT_EASYSSH_BOOKMARK]
   }
 ]

@@ -2,7 +2,7 @@
   "name": "electerm",
   "productName": "EasySSH Desktop",
   "version": "5.0.10",
-  "description": "Terminal/ssh/telnet/serialport/sftp client(linux, mac, win)",
+  "description": "EasySSH Desktop - SSH/SFTP workspace for lab remote servers, based on electerm",
   "main": "app.js",
   "bin": "npm/electerm",
   "scripts": {
@@ -34,24 +34,23 @@
     "lock": "npm i --package-lock-only"
   },
   "license": "MIT",
-  "langugeRepo": "https://github.com/electerm/electerm-locales",
-  "privacyNoticeLink": "https://github.com/electerm/electerm/wiki/privacy-notice",
-  "knownIssuesLink": "https://github.com/electerm/electerm/wiki/Know-issues",
-  "sponsorLink": "https://electerm.org/sponsor-electerm",
+  
+  "privacyNoticeLink": "https://github.com/kaijiHou/kjsy",
+  "knownIssuesLink": "https://github.com/kaijiHou/kjsy/issues",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/electerm/electerm.git"
+    "url": "git+https://github.com/kaijiHou/kjsy.git"
   },
   "author": {
-    "name": "ZHAO Xudong",
-    "email": "zxdong@gmail.com",
-    "url": "https://github.com/zxdong262"
+    "name": "Kaiji Hou",
+    "email": "demo-user1124@gmail.com",
+    "url": "https://github.com/kaijiHou"
   },
   "bugs": {
-    "url": "https://github.com/electerm/electerm/issues"
+    "url": "https://github.com/kaijiHou/kjsy/issues"
   },
-  "homepage": "https://electerm.org",
-  "releases": "https://github.com/electerm/electerm/releases",
+  "homepage": "https://github.com/kaijiHou/kjsy",
+  "releases": "https://github.com/kaijiHou/kjsy/releases",
   "engines": {
     "node": ">=22.12.0"
   },

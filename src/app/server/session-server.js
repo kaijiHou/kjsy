@@ -119,6 +119,16 @@ if (type === 'rdp') {
     // wait. Mirrors the client-side coalescing fast path.
     let lastFlushTime = 0
     const flushIntervalMs = 10
+    // EasySSH（Phase 4A-P0 §四十三）：有界服务端缓冲 + ws 积压监测。
+    // 正常情况下 10ms 即 flush，dataBuffer 不会变大；此处上限只是极端场景
+    // （renderer 卡死且流量洪峰）下的保险，丢弃最旧数据防止子进程无界增长。
+    // ws.bufferedAmount 监控给出"卡死在哪一层"的诊断证据（§三十五矩阵）。
+    const maxBufferBytes = 512 * 1024
+    const wsBacklogWarnBytes = 4 * 1024 * 1024
+    const backlogWarnIntervalMs = 5000
+    let dataBufferBytes = 0
+    let droppedBytes = 0
+    let lastBacklogWarn = 0
 
     const flushBufferedData = () => {
       if (!dataBuffer.length) {
@@ -127,6 +137,15 @@ if (type === 'rdp') {
       }
       lastFlushTime = Date.now()
       const combinedData = Buffer.concat(dataBuffer.splice(0).map(d => Buffer.isBuffer(d) ? d : Buffer.from(d)))
+      dataBufferBytes -= combinedData.length
+      if (droppedBytes > 0) {
+        log.warn(`[EasySSH] terminal ${pid} server buffer overflow, dropped ${droppedBytes} bytes of oldest output`)
+        droppedBytes = 0
+      }
+      if (ws.bufferedAmount > wsBacklogWarnBytes && Date.now() - lastBacklogWarn > backlogWarnIntervalMs) {
+        lastBacklogWarn = Date.now()
+        log.warn(`[EasySSH] terminal ${pid} ws backlog ${Math.round(ws.bufferedAmount / 1024 / 1024)}MB — renderer consuming slower than channel output`)
+      }
 
       // Write to log (keep this)
       term.writeLog(combinedData)
@@ -254,6 +273,13 @@ if (type === 'rdp') {
 
       // Buffer incoming data instead of sending immediately for normal text workload
       dataBuffer.push(chunk)
+      dataBufferBytes += chunk.length
+      // 有界保护：极端洪峰下丢最旧，防子进程内存无界增长（正常 10ms flush 永不触发）
+      while (dataBufferBytes > maxBufferBytes && dataBuffer.length > 1) {
+        const dropped = dataBuffer.shift()
+        dataBufferBytes -= dropped.length
+        droppedBytes += dropped.length
+      }
 
       // Idle fast path: if nothing has been flushed within the coalescing
       // window, this is the start of a new burst (or a lone interactive

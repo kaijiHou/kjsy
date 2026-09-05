@@ -59,7 +59,7 @@ export default auto(function Welcome (props) {
                   <div
                     className='easyssh-recent-item'
                     key={bm.id}
-                    onClick={() => store.easysshOpenServer(bm)}
+                    onClick={() => store.easysshLaunchProfile(bm)}
                   >
                     <DesktopOutlined className='easyssh-recent-icon' />
                     <div className='easyssh-recent-main'>
