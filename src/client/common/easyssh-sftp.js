@@ -71,7 +71,12 @@ async function initSftp (store, tab) {
       return null
     }
     const config = store.config
-    const sftp = await Client(tab.id, 'sftp', port)
+    // ws 通道建立有界（8s）：initWs 的 Promise 在 ws 打不开时永不 settle，
+    // 不加超时会让 Explorer 永远停在 Loading（Phase 4A-P0-EXPLORER）
+    const sftp = await Promise.race([
+      Client(tab.id, 'sftp', port),
+      new Promise((resolve, reject) => setTimeout(() => reject(new Error('sftp ws open timeout (8s)')), 8000))
+    ])
     await Promise.race([
       sftp.connect({
         ...tab,

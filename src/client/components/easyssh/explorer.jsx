@@ -13,6 +13,18 @@ import { joinRemotePath } from '../../common/easyssh-path.mjs'
 import { getServerState } from '../../common/easyssh-utils'
 import './easyssh.styl'
 
+// 有界等待：把"永不 settle 的 SFTP 调用"转换成可见错误（§三十/三十一），
+// 只用于异常防护，正常路径零额外等待
+function withTimeout (promise, ms, label) {
+  return Promise.race([
+    Promise.resolve(promise),
+    new Promise((resolve, reject) => {
+      const t = setTimeout(() => reject(new Error(label + ' timed out (' + Math.round(ms / 1000) + 's)')), ms)
+      Promise.resolve(promise).then(() => clearTimeout(t), () => clearTimeout(t))
+    })
+  ])
+}
+
 /**
  * Remote Explorer —— 左侧文件树
  * - 跟随当前活动终端 cwd（OSC 633 上报），可手动导航（自动暂停跟随）
@@ -92,24 +104,44 @@ export default auto(function RemoteExplorer (props) {
           return
         }
         if (!sftp) {
-          console.info('[EasySSH Explorer] sftp not ready yet, wait for status change', {
+          // 已连接却拿不到 SFTP 通道：这是真实异常，必须显式暴露（§五），
+          // 绝不能静默 return 留在永恒 Loading
+          const msg = 'SFTP channel not available (tab connected, no sftp handle) — click Retry'
+          console.error('[EasySSH Explorer] init error', {
             tabId: tab.id,
             profileId: bm.id,
             serverStatus: tab.status,
             localPort: getTerminalPort(tab.id),
+            error: msg,
             retryCount
           })
+          if (tab.status !== 'processing') {
+            setError(msg)
+          }
           return
         }
         sftpRef.current = sftp
         setSftpReady(true)
         // 初始路径（§六 两级来源）：终端 cwd（若已上报）> SFTP realpath('.') >
         // home 兜底。绝不使用 '~' 字面量（SFTP 不做 shell 展开，§七）。
+        // 每一级失败都记录原因；整体有界（12s），任何失败最终收敛为可见错误 + Retry，
+        // 不允许永恒 Loading（§三十/§三十一）。
         const cwdNow = store.cwdMap[tab.id]
+        const srcErrors = {}
         const initial = (defaultCwd && defaultCwd !== '~') ||
           cwdNow ||
-          await sftp.realpath('.').catch(() => '') ||
-          await sftp.getHomeDir().catch(() => '')
+          await withTimeout(sftp.realpath('.'), 12000, 'realpath')
+            .catch(e => {
+              srcErrors.realpath = e.message
+              console.warn('[EasySSH Explorer] realpath fallback failed', { tabId: tab.id, error: e.message })
+              return ''
+            }) ||
+          await withTimeout(sftp.getHomeDir(), 12000, 'home')
+            .catch(e => {
+              srcErrors.home = e.message
+              console.warn('[EasySSH Explorer] home fallback failed', { tabId: tab.id, error: e.message })
+              return ''
+            })
         console.info('[EasySSH Explorer] init result', {
           tabId: tab.id,
           profileId: bm.id,
@@ -118,12 +150,19 @@ export default auto(function RemoteExplorer (props) {
           sftpReady: true,
           cwdFromTerminal: cwdNow || null,
           initialPath: initial || null,
-          pathSource: (defaultCwd && defaultCwd !== '~') ? 'bookmark' : (cwdNow ? 'cwd' : 'sftp-home'),
+          pathSource: (defaultCwd && defaultCwd !== '~') ? 'bookmark' : (cwdNow ? 'cwd' : (initial ? 'sftp-home' : 'none')),
+          srcErrors: Object.keys(srcErrors).length ? srcErrors : null,
           elapsed: Date.now() - t0,
           retryCount
         })
         if (initial && typeof initial === 'string') {
           setRootPath(initial)
+        } else if (!disposed && tab.status !== 'processing') {
+          // SFTP 就绪但所有路径来源都失败：显式错误 + Retry，不静默停留
+          const detail = Object.keys(srcErrors).length
+            ? Object.entries(srcErrors).map(([k, v]) => k + ': ' + v).join('; ')
+            : 'no path source available'
+          setError('Cannot resolve remote directory (' + detail + ')')
         }
       } catch (e) {
         if (disposed) {
@@ -136,7 +175,11 @@ export default auto(function RemoteExplorer (props) {
           localPort: getTerminalPort(tab.id),
           error: e.message
         })
-        setError(e.message || 'SFTP init failed')
+        // 连接建立中失败（例如认证完成前 SFTP 通道未就绪）：不报错，
+        // 等 status 翻转自动重试；已连接后的失败才是真异常，显示错误 + Retry
+        if (tab.status !== 'processing') {
+          setError(e.message || 'SFTP init failed')
+        }
       }
     }
     init()
