@@ -132,9 +132,15 @@ export default Store => {
    * 记录终端 cwd（OSC 633 Shell Integration 上报，按 tabId 存储）
    * 数据流：shell → OSC 633;P;Cwd= → command-tracker-addon → terminal.setCwd → session.setCwd → 这里
    */
+  /**
+   * 记录终端 cwd（OSC 633 Shell Integration 上报，按 tabId 存储）
+   * 数据流：shell → OSC 633;P;Cwd= → command-tracker-addon → terminal.setCwd → session.setCwd → 这里
+   * Phase 4A-P0-SOURCE-AUDIT：cwdMap[tabId] = cwd 新增 key 不触发 manate 通知
+   *（历史已知陷阱），必须整对象替换才能让 Explorer 的 follow effect 重渲染。
+   */
   Store.prototype.setTabCwd = function (tabId, cwd) {
     if (typeof cwd === 'string' && cwd) {
-      this.cwdMap[tabId] = cwd
+      this.cwdMap = { ...this.cwdMap, [tabId]: cwd }
     }
   }
 

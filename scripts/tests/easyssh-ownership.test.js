@@ -22,14 +22,14 @@ test('username home fallback: root → /root, others → /home/<user>, empty →
 
 test('settings: setSettingItem dispatches easyssh:setting-modal (reactivity bridge)', () => {
   const src = read('../../src/client/store/common.js')
-  const m = src.match(/setSettingItem = function \(v\) \{([\s\S]*?)\n  \}/)
+  const m = src.match(/setSettingItem = function \(v\) \{([\s\S]*?)\n[ \t]*\}/)
   assert.ok(m, 'setSettingItem found')
   assert.match(m[1], /dispatchEvent\(new Event\('easyssh:setting-modal'\)\)/, 'must dispatch notification')
 })
 
 test('settings: hideSettingModal does not double-dispatch', () => {
   const src = read('../../src/client/store/setting.js')
-  const m = src.match(/hideSettingModal = function \(\) \{([\s\S]*?)\n  \}/)
+  const m = src.match(/hideSettingModal = function \(\) \{([\s\S]*?)\n[ \t]*\}/)
   assert.ok(m, 'hideSettingModal found')
   const dispatches = (m[1].match(/dispatchEvent/g) || []).length
   assert.equal(dispatches, 0, 'hide relies on setSettingItem notification; no extra dispatch')
@@ -46,7 +46,7 @@ test('sftp ownership: dropSftp only destroys easyssh-owned instances', () => {
 
 test('sftp: Sftp.destroy sets destroyed flag and clears ws', () => {
   const src = read('../../src/client/common/sftp.js')
-  const m = src.match(/async destroy \(\) \{([\s\S]*?)\n  \}/)
+  const m = src.match(/async destroy \(\) \{([\s\S]*?)\n {2}\}/)
   assert.ok(m, 'destroy found')
   assert.match(m[1], /this\.destroyed = true/)
   assert.match(m[1], /this\.ws = null/)
@@ -58,4 +58,11 @@ test('getOwnerTab prefers non-error tab (regression)', () => {
     { id: 't2', srcId: 'a', pane: 'ssh', status: 'done' }
   ]
   assert.equal(getOwnerTab({ tabs }, 'a').id, 't2')
+})
+
+test('cwdMap update must replace the whole object (manate new-key trap)', () => {
+  const src = read('../../src/client/store/easyssh.js')
+  const m = src.match(/setTabCwd = function \(tabId, cwd\) \{([\s\S]*?)\n[ \t]*\}/)
+  assert.ok(m, 'setTabCwd found')
+  assert.match(m[1], /\.\.\.this\.cwdMap/, 'must spread-replace cwdMap so manate notifies')
 })
