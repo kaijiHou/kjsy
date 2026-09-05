@@ -8,7 +8,7 @@ import {
   FileOutlined,
   CloseOutlined
 } from '@ant-design/icons'
-import { ensureSftp } from '../../common/easyssh-sftp'
+import { ensureSftp, dropSftp, getTerminalPort } from '../../common/easyssh-sftp'
 import { joinRemotePath } from '../../common/easyssh-path.mjs'
 import { getServerState } from '../../common/easyssh-utils'
 import './easyssh.styl'
@@ -62,32 +62,80 @@ export default auto(function RemoteExplorer (props) {
     }
   }, [cwd, tab])
 
-  // 确保 SFTP 连接
+  // 确保 SFTP 连接（Phase 4A-P0-EXPLORER：状态驱动，无定时器）
+  // 依赖 tab.status：连接 processing→done、断线 error→done 时自动重新初始化，
+  // 保证"新窗口 Terminal Connected 后 Explorer 自动加载"，无需手点 Retry（§二十/§二十七）。
   useEffect(() => {
     let disposed = false
     async function init () {
       if (!tab || !bm) {
         return
       }
+      // 断线：立即失效本 tab 的 SFTP handle，禁止重连后复用旧 handle（§二十六）
+      if (tab.status === 'error') {
+        if (sftpRef.current) {
+          console.info('[EasySSH Explorer] connection error, invalidate sftp handle', {
+            tabId: tab.id,
+            profileId: bm.id
+          })
+          dropSftp(tab.id)
+          sftpRef.current = null
+          setSftpReady(false)
+        }
+        return
+      }
+      const t0 = Date.now()
       try {
         // 注意：bm 展开会覆盖 id（bookmark id ≠ tab id），必须显式保留 tab.id
         const sftp = await ensureSftp(store, { ...tab, id: tab.id })
-        if (disposed || !sftp) {
+        if (disposed) {
+          return
+        }
+        if (!sftp) {
+          console.info('[EasySSH Explorer] sftp not ready yet, wait for status change', {
+            tabId: tab.id,
+            profileId: bm.id,
+            serverStatus: tab.status,
+            localPort: getTerminalPort(tab.id),
+            retryCount
+          })
           return
         }
         sftpRef.current = sftp
         setSftpReady(true)
-        // 初始路径（§二十二/§二十三）：显式书签目录 > 终端 cwd > SFTP realpath('.')
-        // > home 兜底。连接建立后 Explorer 永远有一个可靠初始目录，不会 undefined。
+        // 初始路径（§六 两级来源）：终端 cwd（若已上报）> SFTP realpath('.') >
+        // home 兜底。绝不使用 '~' 字面量（SFTP 不做 shell 展开，§七）。
+        const cwdNow = store.cwdMap[tab.id]
         const initial = (defaultCwd && defaultCwd !== '~') ||
-          store.cwdMap[tab.id] ||
+          cwdNow ||
           await sftp.realpath('.').catch(() => '') ||
           await sftp.getHomeDir().catch(() => '')
-        if (initial) {
+        console.info('[EasySSH Explorer] init result', {
+          tabId: tab.id,
+          profileId: bm.id,
+          serverStatus: tab.status,
+          localPort: getTerminalPort(tab.id),
+          sftpReady: true,
+          cwdFromTerminal: cwdNow || null,
+          initialPath: initial || null,
+          pathSource: (defaultCwd && defaultCwd !== '~') ? 'bookmark' : (cwdNow ? 'cwd' : 'sftp-home'),
+          elapsed: Date.now() - t0,
+          retryCount
+        })
+        if (initial && typeof initial === 'string') {
           setRootPath(initial)
         }
       } catch (e) {
-        console.error('explorer sftp init error', e)
+        if (disposed) {
+          return
+        }
+        console.error('[EasySSH Explorer] init error', {
+          tabId: tab.id,
+          profileId: bm.id,
+          serverStatus: tab.status,
+          localPort: getTerminalPort(tab.id),
+          error: e.message
+        })
         setError(e.message || 'SFTP init failed')
       }
     }
@@ -95,13 +143,28 @@ export default auto(function RemoteExplorer (props) {
     return () => {
       disposed = true
     }
-  }, [tab?.id, retryCount, defaultCwd])
+  }, [tab?.id, tab?.status, retryCount, defaultCwd])
 
+  // Retry 必须重新 resolve live runtime（§十九）：丢弃缓存 handle 再重建，
+  // 不能复用陈旧 path/handle/session
   const retryInit = () => {
+    console.info('[EasySSH Explorer] retry', {
+      tabId: tab ? tab.id : null,
+      profileId: bm ? bm.id : null,
+      serverStatus: tab ? tab.status : null,
+      localPort: tab ? getTerminalPort(tab.id) : null,
+      explorerPath: rootRef.current || null,
+      retryCount
+    })
     setError('')
     setSftpReady(false)
+    if (tab) {
+      dropSftp(tab.id)
+    }
+    sftpRef.current = null
     setRetryCount(c => c + 1)
-  } // 列目录（rootPath 变化或 SFTP 就绪）
+  }
+  // 列目录（rootPath 变化或 SFTP 就绪）
   // 路径为空/未就绪时不发请求 —— 服务端永远不会收到 undefined/null 路径
   useEffect(() => {
     if (!rootPath || typeof rootPath !== 'string' || !sftpReady || !sftpRef.current) {
@@ -122,7 +185,13 @@ export default auto(function RemoteExplorer (props) {
         if (disposed) {
           return
         }
-        console.error('explorer list error', e)
+        console.error('[EasySSH Explorer] list error', {
+          tabId: tab ? tab.id : null,
+          profileId: bm ? bm.id : null,
+          serverStatus: tab ? tab.status : null,
+          explorerPath: rootPath,
+          error: e.message || String(e)
+        })
         setError(e.message || 'list failed')
         setLoading(false)
       })
