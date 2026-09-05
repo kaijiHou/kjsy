@@ -46,6 +46,7 @@ export default auto(function RemoteExplorer (props) {
   const [error, setError] = useState('')
   const [retryCount, setRetryCount] = useState(0)
   const sftpRef = useRef(null)
+  const autoRetriedRef = useRef(false)
   const rootRef = useRef('')
   const followRef = useRef(!defaultCwd || defaultCwd === '~')
   followRef.current = follow
@@ -66,6 +67,7 @@ export default auto(function RemoteExplorer (props) {
     setError('')
     setSftpReady(false)
     sftpRef.current = null
+    autoRetriedRef.current = false
   }, [tab?.id, defaultCwd])
 
   useEffect(() => {
@@ -158,11 +160,25 @@ export default auto(function RemoteExplorer (props) {
         if (initial && typeof initial === 'string') {
           setRootPath(initial)
         } else if (!disposed && tab.status !== 'processing') {
-          // SFTP 就绪但所有路径来源都失败：显式错误 + Retry，不静默停留
-          const detail = Object.keys(srcErrors).length
-            ? Object.entries(srcErrors).map(([k, v]) => k + ': ' + v).join('; ')
-            : 'no path source available'
-          setError('Cannot resolve remote directory (' + detail + ')')
+          // SFTP 就绪但解析不到路径：可能是降级/损坏的 sftp handle。
+          // 自动重建一次（ref 防循环）；再失败才显式报错 + 手动 Retry
+          if (!autoRetriedRef.current) {
+            autoRetriedRef.current = true
+            console.warn('[EasySSH Explorer] path resolution empty, rebuild sftp handle once', {
+              tabId: tab.id,
+              profileId: bm.id,
+              srcErrors
+            })
+            dropSftp(tab.id)
+            sftpRef.current = null
+            setSftpReady(false)
+            setRetryCount(c => c + 1)
+          } else {
+            const detail = Object.keys(srcErrors).length
+              ? Object.entries(srcErrors).map(([k, v]) => k + ': ' + v).join('; ')
+              : 'no path source available'
+            setError('Cannot resolve remote directory (' + detail + ')')
+          }
         }
       } catch (e) {
         if (disposed) {

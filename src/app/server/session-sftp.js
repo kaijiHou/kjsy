@@ -12,6 +12,7 @@ const {
   getSizeCountWin
 } = require('../common/get-folder-size-and-file-count.js')
 const globalState = require('./global-state')
+const log = require('../common/log')
 
 class Sftp extends TerminalBase {
   connect (initOptions) {
@@ -56,15 +57,36 @@ class Sftp extends TerminalBase {
     this.client = conn
     this.enableSsh = initOptions.enableSsh
     try {
-      const sftp = await new Promise((resolve, reject) => {
-        conn.sftp((err, sftp) => {
-          if (err) {
-            return reject(err)
-          }
-          resolve(sftp)
-        })
-      })
-      this.sftp = sftp
+      // Phase 4A-P0-EXPLORER：连接认证完成前 conn.sftp() 会立即失败，
+      // 旧逻辑直接静默降级到 SshFs（exec 仿 SFTP，realpath 等返回空），
+      // 导致 Explorer "no path source available"。这里带退避重试等认证完成，
+      // 只有服务器真正不支持 SFTP 子系统时才降级。
+      let sftp = null
+      let lastErr = null
+      const retries = 20
+      const interval = 500
+      for (let i = 0; i < retries; i++) {
+        try {
+          sftp = await new Promise((resolve, reject) => {
+            conn.sftp((err, s) => {
+              if (err) {
+                return reject(err)
+              }
+              resolve(s)
+            })
+          })
+          break
+        } catch (e) {
+          lastErr = e
+          await new Promise(resolve => setTimeout(resolve, interval))
+        }
+      }
+      if (!sftp) {
+        log.warn('[EasySSH] sftp channel failed after retries, fallback to SshFs:', lastErr && lastErr.message)
+        this.initSshFsFallback(conn)
+      } else {
+        this.sftp = sftp
+      }
     } catch (err) {
       this.initSshFsFallback(conn)
     }
