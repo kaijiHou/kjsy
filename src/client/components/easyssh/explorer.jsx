@@ -133,21 +133,34 @@ export default auto(function RemoteExplorer (props) {
         // 最后一级 fallback（§二十九，与 upstream sftp-entry.getPwd 对齐）：
         // root → /root，其余 → /home/<username>；仅供 list 验证，失败会显式报错
         const usernameHome = getUsernameHome(bm.username)
-        const initial = (defaultCwd && defaultCwd !== '~') ||
-          cwdNow ||
-          await withTimeout(sftp.realpath('.'), 12000, 'realpath')
+        // ★ Phase 4A-P0-FINAL 根因修复：原 `(defaultCwd && defaultCwd !== '~') ||`
+        //   返回的是比较结果的布尔 true 而不是路径字符串，导致设置了默认目录的
+        //   连接 initial 永远为 true，触发 "no path source available"。
+        //   改为显式 if/else，任何分支产出的都是字符串。
+        let initial = ''
+        if (defaultCwd && defaultCwd !== '~') {
+          initial = defaultCwd
+        } else if (cwdNow) {
+          initial = cwdNow
+        } else {
+          initial = await withTimeout(sftp.realpath('.'), 12000, 'realpath')
             .catch(e => {
               srcErrors.realpath = e.message
               console.warn('[EasySSH Explorer] realpath fallback failed', { tabId: tab.id, error: e.message })
               return ''
-            }) ||
-          await withTimeout(sftp.getHomeDir(), 12000, 'home')
+            })
+        }
+        if (!initial) {
+          initial = await withTimeout(sftp.getHomeDir(), 12000, 'home')
             .catch(e => {
               srcErrors.home = e.message
               console.warn('[EasySSH Explorer] home fallback failed', { tabId: tab.id, error: e.message })
               return ''
-            }) ||
-          usernameHome
+            })
+        }
+        if (!initial) {
+          initial = usernameHome
+        }
         console.info('[EasySSH Explorer] init result', {
           tabId: tab.id,
           profileId: bm.id,
