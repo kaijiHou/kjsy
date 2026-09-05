@@ -5,10 +5,23 @@ import '../css/basic.styl'
 import '../css/mobile.styl'
 import { get as _get } from 'lodash-es'
 import '../common/pre'
-
+// Phase 4A-P0-BUILD-RUNTIME-IDENTITY：vite define 构建时注入 + json 兜底（CDP 可查）
+// Phase 4A-P0-BUILD-RUNTIME-IDENTITY：vite define 构建时注入 + json 兜底（CDP 可查）
+if (typeof __EASYSSH_BUILD__ !== 'undefined') {
+  window.__EASYSSH_BUILD__ = __EASYSSH_BUILD__
+  console.log('[EasySSH Build]', __EASYSSH_BUILD__.commit, __EASYSSH_BUILD__.builtAt)
+}
+window.fetch('/build-identity.json')
+  .then(r => r.ok ? r.json() : null)
+  .then(id => {
+    if (id && !window.__EASYSSH_BUILD__) {
+      window.__EASYSSH_BUILD__ = id
+      console.log('[EasySSH Build]', id.commit, id.builtAt)
+    }
+  })
+  .catch(() => {})
 const { isDev } = window.et
 const { version } = window.pre.packInfo
-
 async function loadWorker () {
   return new Promise((resolve) => {
     const url = !isDev ? `js/worker-${version}.js` : 'js/worker.js'
@@ -28,7 +41,6 @@ async function loadWorker () {
     window.worker.addEventListener('message', onInit)
   })
 }
-
 async function load () {
   window.capitalizeFirstLetter = (string) => {
     return string.charAt(0).toUpperCase() + string.slice(1)
@@ -78,6 +90,5 @@ async function load () {
   await loadWorker()
   loadScript()
 }
-
 // window.addEventListener('load', load)
 load()

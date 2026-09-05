@@ -28,6 +28,17 @@ if (isWin) {
   delete pack.dependencies['node-powershell']
 }
 
+// Phase 4A-P0-BUILD-RUNTIME-IDENTITY：构建时注入不可伪造的 build identity，
+// 运行时经 file server 读取（/build-identity.json），用于核对运行实例与源码版本
+{
+  const { exec } = require('shelljs')
+  const commit = String(exec('git rev-parse HEAD', { silent: true }) || '').trim() || 'unknown'
+  require('fs').writeFileSync(
+    resolve(__dirname, '../../work/app/assets/build-identity.json'),
+    JSON.stringify({ commit, builtAt: new Date().toISOString() })
+  )
+}
+
 echo('start pack prepare')
 // echo('install test deps')
 // exec(`PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 npm i -D -E playwright@1.28.1 --no-save && npm i -D -E @playwright/test@1.28.1 --no-save`)

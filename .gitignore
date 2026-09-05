@@ -127,3 +127,4 @@ ftp-root
 /.workbuddy
 .catpawdist-fresh/
 dist2/
+dist-identity/

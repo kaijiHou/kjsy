@@ -166,7 +166,8 @@
       "CustomEvent",
       "onmessage",
       "requestAnimationFrame",
-      "self"
+      "self",
+      "__EASYSSH_BUILD__"
     ]
   }
 }

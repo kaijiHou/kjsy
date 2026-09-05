@@ -52,7 +52,13 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['ironrdp-wasm']
   },
-  define: def,
+  define: {
+    ...def,
+    __EASYSSH_BUILD__: JSON.stringify({
+      commit: process.env.EASYSSH_BUILD_COMMIT || 'unknown',
+      builtAt: process.env.EASYSSH_BUILD_TIME || ''
+    })
+  },
   publicDir: false,
   legacy: {
     inconsistentCjsInterop: true
