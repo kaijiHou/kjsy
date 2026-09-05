@@ -100,6 +100,10 @@ export default Store => {
 
   Store.prototype.setSettingItem = function (v) {
     window.store.settingItem = v
+    // Phase 4A-P0-SOURCE-AUDIT：SettingModalWrap 靠该事件强制重渲染
+    // （manate auto 订阅在该组件失效），左侧切项/顶部切 tab 都经由这里，
+    // 不发事件会导致内容永远停在 setting-common
+    window.dispatchEvent(new Event('easyssh:setting-modal'))
   }
 
   Store.prototype.setTermSearchOption = function (update) {

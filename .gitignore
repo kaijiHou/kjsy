@@ -125,4 +125,5 @@ ftp-root
 /.claude
 /AGENTS.md
 /.workbuddy
-.catpaw
+.catpawdist-fresh/
+dist2/

@@ -225,14 +225,50 @@ class Sftp extends TerminalBase {
   /**
    * getHomeDir
    *
-   * https://github.com/mscdex/ssh2/blob/master/SFTP.md
-   * only support linux / mac
-   * @return {Promise}
+   * Phase 4A-P0-SOURCE-AUDIT：原实现只有 realpath('')，当 sftp 通道为
+   * SshFs 降级后端或服务器 realpath 行为异常时返回空，Explorer 会得到
+   * "no path source available"。这里做成可靠解析器：
+   *   1. native sftp realpath('.')
+   *   2. exec 远端 $HOME（POSIX printf / Windows PowerShell UserProfile）
+   *   3. exec pwd
+   * 都失败返回 ''，由 client 做 username convention 最后兜底。
+   * 全程复用现有 conn（this.client），不新建 SSH 连接、不 source bashrc。
    */
-  getHomeDir () {
-    // return this.runCmd('eval echo "~$different_user"')
-    // ext_home_dir
-    return this.realpath('')
+  async getHomeDir () {
+    try {
+      const p = await this.realpath('.')
+      if (p && typeof p === 'string' && p.trim()) {
+        return p.trim()
+      }
+    } catch (e) {
+      log.warn('[EasySSH] getHomeDir realpath failed:', e.message)
+    }
+    if (this.enableSsh === false) {
+      return ''
+    }
+    try {
+      const platform = await this.getRemoteExecPlatform()
+      const cmd = platform === 'windows'
+        ? this.buildPowerShellCommand('Write-Output $HOME')
+        : 'printf \'%s\\n\' "$HOME"'
+      const out = await this.execBuffered(cmd)
+      const home = String((out && out.stdout) || '').trim()
+      if (home) {
+        return platform === 'windows' ? home.replace(/\\/g, '/') : home
+      }
+    } catch (e) {
+      log.warn('[EasySSH] getHomeDir exec $HOME failed:', e.message)
+    }
+    try {
+      const out = await this.execBuffered('pwd')
+      const cwd = String((out && out.stdout) || '').trim()
+      if (cwd && cwd.startsWith('/')) {
+        return cwd
+      }
+    } catch (e) {
+      log.warn('[EasySSH] getHomeDir exec pwd failed:', e.message)
+    }
+    return ''
   }
 
   // getSftpHomeDir () {

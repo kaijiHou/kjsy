@@ -70,6 +70,10 @@ class Sftp {
       terminalId: this.terminalId
     })
     ws.close()
+    // Phase 4A-P0-SOURCE-AUDIT：destroy 后进入明确 dead state，
+    // 防止 getSftpEntry/缓存再把死对象当有效实例借出
+    this.destroyed = true
+    this.ws = null
   }
 }
 

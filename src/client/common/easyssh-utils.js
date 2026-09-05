@@ -52,3 +52,15 @@ export function getOwnerBookmark (store, serverId) {
   }
   return (store.bookmarks || []).find(b => b.id === serverId) || null
 }
+
+/**
+ * Explorer 最后一级 home 兜底（Phase 4A-P0-SOURCE-AUDIT §二十九）：
+ * 与 upstream sftp-entry.getPwd 的约定一致——root → /root，其余 → /home/<user>。
+ * 仅在 realpath/exec $HOME/exec pwd 全部为空后使用，且由 list 验证。
+ */
+export function getUsernameHome (username) {
+  if (!username) {
+    return ''
+  }
+  return username === 'root' ? '/root' : '/home/' + username
+}

@@ -10,7 +10,7 @@ import {
 } from '@ant-design/icons'
 import { ensureSftp, dropSftp, getTerminalPort } from '../../common/easyssh-sftp'
 import { joinRemotePath } from '../../common/easyssh-path.mjs'
-import { getServerState } from '../../common/easyssh-utils'
+import { getServerState, getUsernameHome } from '../../common/easyssh-utils'
 import './easyssh.styl'
 
 // 有界等待：把"永不 settle 的 SFTP 调用"转换成可见错误（§三十/三十一），
@@ -130,6 +130,9 @@ export default auto(function RemoteExplorer (props) {
         // 不允许永恒 Loading（§三十/§三十一）。
         const cwdNow = store.cwdMap[tab.id]
         const srcErrors = {}
+        // 最后一级 fallback（§二十九，与 upstream sftp-entry.getPwd 对齐）：
+        // root → /root，其余 → /home/<username>；仅供 list 验证，失败会显式报错
+        const usernameHome = getUsernameHome(bm.username)
         const initial = (defaultCwd && defaultCwd !== '~') ||
           cwdNow ||
           await withTimeout(sftp.realpath('.'), 12000, 'realpath')
@@ -143,7 +146,8 @@ export default auto(function RemoteExplorer (props) {
               srcErrors.home = e.message
               console.warn('[EasySSH Explorer] home fallback failed', { tabId: tab.id, error: e.message })
               return ''
-            })
+            }) ||
+          usernameHome
         console.info('[EasySSH Explorer] init result', {
           tabId: tab.id,
           profileId: bm.id,
@@ -152,7 +156,7 @@ export default auto(function RemoteExplorer (props) {
           sftpReady: true,
           cwdFromTerminal: cwdNow || null,
           initialPath: initial || null,
-          pathSource: (defaultCwd && defaultCwd !== '~') ? 'bookmark' : (cwdNow ? 'cwd' : (initial ? 'sftp-home' : 'none')),
+          pathSource: (defaultCwd && defaultCwd !== '~') ? 'bookmark' : (cwdNow ? 'cwd' : (initial && initial !== usernameHome ? 'sftp-home' : (initial ? 'username' : 'none'))),
           srcErrors: Object.keys(srcErrors).length ? srcErrors : null,
           elapsed: Date.now() - t0,
           retryCount
@@ -251,7 +255,7 @@ export default auto(function RemoteExplorer (props) {
           explorerPath: rootPath,
           error: e.message || String(e)
         })
-        setError(e.message || 'list failed')
+        setError('Cannot open remote directory ' + rootPath + ': ' + (e.message || 'list failed'))
         setLoading(false)
       })
     return () => {

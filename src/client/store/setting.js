@@ -141,7 +141,6 @@ export default Store => {
     const { store } = window
     store.showModal = modals.hide
     store.setSettingItem({})
-    window.dispatchEvent(new Event('easyssh:setting-modal'))
   }
 
   Store.prototype.loadFontList = async function () {
