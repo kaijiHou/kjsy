@@ -48,6 +48,9 @@ exports.createWindow = async function (userConfig) {
       enableRemoteModule: false,
       preload: resolve(__dirname, '../preload/preload.js'),
       webviewTag: true,
+      // Phase 4B-P0:终端在后台窗口也必须持续处理输出(否则遮挡/后台时输出停滞,
+      // 用户看到 Terminal 冻结)。这是终端类应用的标准要求。
+      backgroundThrottling: false,
       devTools: !userConfig.disableDeveloperTool,
       spellcheck: false
     },

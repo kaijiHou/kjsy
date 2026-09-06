@@ -75,6 +75,12 @@ exports.createApp = async function () {
   // EasySSH dev/test override：允许开发/验收实例使用独立 userData（Chromium profile +
   // safeStorage os_crypt key），不触碰正式安装版 profile，同时仍共享硬编码的
   // appData/electerm 数据库路径。设置 EASYSSH_USER_DATA_DIR 即生效。
+  // Phase 4B-P0:Windows 原生窗口遮挡检测会误判(窗口被其它窗口覆盖即标记 hidden),
+  // 触发后台节流,终端输出退化为秒级 trickle——用户表现为"Terminal 运行一段时间后卡死"。
+  // 终端类应用必须在后台持续处理输出,故禁用该特性(仅 Windows 存在此问题)。
+  if (process.platform === 'win32') {
+    app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+  }
   if (process.env.EASYSSH_USER_DATA_DIR) {
     app.setPath('userData', process.env.EASYSSH_USER_DATA_DIR)
   }

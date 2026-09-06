@@ -377,6 +377,8 @@ export default class AttachAddonCustom {
     const data = buf.length === 1 ? buf[0] : buf.join('')
     const { term } = this
     this._lastFlushTime = Date.now()
+    // 注:xterm 6.1.0-beta.288 的 write callback 实测从不触发(见 DEVLOG Phase 4B),
+    // 不能用作队列积压信号。冻结根因为 Windows 遮罩误判+后台节流(已修)。
     term.write(data)
     // Notify parent that the terminal buffer has been updated (echo received),
     // once per flush instead of once per chunk.
